@@ -44,32 +44,16 @@ auto rawStatus(const int code) noexcept -> RawStatus {
 HTTPClient::HTTPClient() noexcept: headersToCollect_() {}
 HTTPClient::~HTTPClient() noexcept {}
 
-static ssize_t send(uint32_t fd, const char * msg, const size_t len) noexcept {
+static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   if (iop::Log::isTracing())
     iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);
   return write(fd, msg, len);
 }
 
-Session::Session(HTTPClient &http, std::string uri, int32_t fd) noexcept: fd_(fd), http_(&http), headers{}, uri_(std::move(uri)) { IOP_TRACE(); }
+Session::Session(HTTPClient &http, std::string uri, std::shared_ptr<int> fd) noexcept: fd_(std::move(fd)), http_(&http), headers{}, uri_(std::move(uri)) { IOP_TRACE(); }
 Session::~Session() noexcept {
-  if (this->fd_ != -1)
-    close(this->fd_);
-}
-Session::Session(Session&& other) noexcept: fd_(other.fd_), http_(other.http_), headers(std::move(other.headers)), uri_(std::move(other.uri_)) {
-  IOP_TRACE();
-  other.http_ = nullptr;
-  other.fd_ = -1;
-}
-auto Session::operator=(Session&& other) noexcept -> Session & {
-  IOP_TRACE();
-  this->http_ = other.http_;
-  other.http_ = nullptr;
-
-  this->uri_ = std::move(other.uri_);
-
-  this->fd_ = other.fd_;
-  other.fd_ = -1;
-  return *this;
+  if (this->fd_.use_count() == 1)
+    close(*this->fd_);
 }
 void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept {
   std::vector<std::string> vec;
@@ -89,7 +73,7 @@ void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept
   // Headers can't be UTF8 so we cool
   std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
       [](unsigned char c){ return std::tolower(c); });
-  this->headers.emplace(keyLower, std::move(value.toString()));
+  this->headers.emplace(keyLower, value.toString());
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept  {
   auto keyLower = key.toString();
@@ -113,7 +97,7 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
   const std::string_view path(this->uri_.c_str() + this->uri_.find("/", this->uri_.find("://") + 3));
   clientDriverLogger.debug(IOP_STATIC_STRING("Send request to "), path);
 
-  auto fd = this->fd_;
+  auto fd = *this->fd_;
   iop_assert(fd != -1, IOP_STATIC_STRING("Invalid file descriptor"));
   if (clientDriverLogger.level() == iop::LogLevel::TRACE || iop::Log::isTracing())
     iop::Log::print(IOP_STATIC_STRING(""), iop::LogLevel::TRACE, iop::LogType::START);
@@ -283,7 +267,7 @@ auto HTTPClient::begin(std::string uri_) noexcept -> std::optional<Session> {
   int32_t fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     clientDriverLogger.error(IOP_STATIC_STRING("Unable to open socket"));
-    return std::optional<Session>();
+    return std::nullopt;
   }
 
   iop_assert(uri.find("http://") == 0, IOP_STATIC_STRING("Protocol must be http (no SSL)"));
@@ -297,7 +281,7 @@ auto HTTPClient::begin(std::string uri_) noexcept -> std::optional<Session> {
     port = static_cast<uint16_t>(strtoul(std::string(uri.begin(), portIndex + 1, end).c_str(), nullptr, 10));
     if (port == 0) {
       clientDriverLogger.error(IOP_STATIC_STRING("Unable to parse port, broken server: "), uri);
-      return std::optional<Session>();
+     return std::nullopt;
     }
   }
   clientDriverLogger.debug(IOP_STATIC_STRING("Port: "), std::to_string(port));
@@ -314,16 +298,16 @@ auto HTTPClient::begin(std::string uri_) noexcept -> std::optional<Session> {
   if(inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0) {
     close(fd);
     clientDriverLogger.error(IOP_STATIC_STRING("Address not supported: "), host);
-    return std::optional<Session>();
+    return std::nullopt;
   }
 
   int32_t connection = connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   if (connection < 0) {
     clientDriverLogger.error(IOP_STATIC_STRING("Unable to connect: "), std::to_string(connection));
     close(fd);
-    return std::optional<Session>();
+    return std::nullopt;
   }
   clientDriverLogger.debug(IOP_STATIC_STRING("Began connection: "), uri);
-  return Session(*this, std::move(uri_), fd);
+  return Session(*this, std::move(uri_), std::make_shared<int>(fd));
 }
 }

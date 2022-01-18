@@ -48,12 +48,6 @@ public:
 
   explicit Response(const NetworkStatus &status) noexcept;
   Response(const NetworkStatus &status, std::string payload) noexcept;
-
-  ~Response() noexcept = default;
-  Response(Response &resp) noexcept = delete;
-  Response(Response &&resp) noexcept = default;
-  auto operator=(Response &resp) noexcept -> Response & = delete;
-  auto operator=(Response &&resp) noexcept -> Response & = default;
 };
 
 enum class HttpMethod {
@@ -114,12 +108,6 @@ public:
   static auto apiStatusToString(const NetworkStatus &status) noexcept -> StaticString;
   /// Extracts a network status from the raw response
   auto apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus>;
-
-  ~Network() noexcept = default;
-  Network(Network const &other) = default;
-  Network(Network &&other) = delete;
-  auto operator=(Network const &other) -> Network & = default;
-  auto operator=(Network &&other) -> Network & = delete;
 };
 
 } // namespace iop

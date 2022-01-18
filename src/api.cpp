@@ -334,22 +334,7 @@ auto Api::registerLog(const AuthToken &authToken,
 auto Api::setup() const noexcept -> void {}
 #endif
 
-Api::~Api() noexcept { IOP_TRACE(); }
-
 Api::Api(iop::StaticString uri, const iop::LogLevel logLevel) noexcept
     : network(std::move(uri), logLevel), logger(logLevel, IOP_STATIC_STRING("API")) {
   IOP_TRACE();
-}
-
-Api::Api(Api const &other) : network(other.network), logger(other.logger) {
-  IOP_TRACE();
-}
-
-auto Api::operator=(Api const &other) -> Api & {
-  IOP_TRACE();
-  if (this == &other)
-    return *this;
-  this->logger = other.logger;
-  this->network = other.network;
-  return *this;
 }

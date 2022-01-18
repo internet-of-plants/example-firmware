@@ -93,16 +93,11 @@ private:
   ///
   /// Gets a name for logging purposes. And a callback that insert data into the JSON serializer abstraction.
   auto makeJson(const iop::StaticString contextName, const JsonCallback &jsonObjectBuilder) const noexcept -> std::optional<std::reference_wrapper<std::array<char, 768>>>;
-public:
-  ~Api() noexcept;
-  Api(Api const &other);
-  Api(Api &&other) = delete;
-  auto operator=(Api const &other) -> Api &;
-  auto operator=(Api &&other) -> Api & = delete;
 };
 
 /// Represents the data passed to the panic hook
-struct PanicData {
+class PanicData {
+public:
   std::string_view msg;
   iop::StaticString file;
   uint32_t line;

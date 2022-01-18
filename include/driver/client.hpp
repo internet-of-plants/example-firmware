@@ -57,7 +57,7 @@ class HTTPClient;
 
 class Session {
   #ifdef IOP_DESKTOP
-  int32_t fd_;
+  std::shared_ptr<int> fd_;
   #endif
 
   #ifndef IOP_NOOP
@@ -67,7 +67,7 @@ class Session {
   #endif
 
   #ifdef IOP_DESKTOP
-  Session(HTTPClient &http, std::string uri, int32_t fd) noexcept;
+  Session(HTTPClient &http, std::string uri, std::shared_ptr<int> fd) noexcept;
   #elif defined(IOP_ESP8266)
   Session(HTTPClient &http, std::string uri) noexcept;
   #elif defined(IOP_NOOP)
@@ -83,11 +83,6 @@ public:
   void addHeader(iop::StaticString key, iop::StaticString value) noexcept;
   void addHeader(iop::StaticString key, std::string_view value) noexcept;
   void setAuthorization(std::string auth) noexcept;
-  
-  Session(Session& other) noexcept = delete;
-  Session(Session&& other) noexcept;
-  auto operator=(Session& other) noexcept -> Session & = delete;
-  auto operator=(Session&& other) noexcept -> Session &;
   ~Session() noexcept;
 };
 

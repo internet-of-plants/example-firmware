@@ -50,7 +50,8 @@ auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const
 
   this->logger.trace(IOP_STATIC_STRING("Found Auth token: "), tok);
 
-  return std::ref(unused4KbSysStack.token());
+  const auto & ret = unused4KbSysStack.token();
+  return std::ref(ret);
 }
 
 void Flash::removeToken() const noexcept {

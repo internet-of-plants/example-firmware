@@ -88,6 +88,8 @@
         "codecvt": "cpp",
         "coroutine": "cpp",
         "source_location": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "variant": "cpp",
+        "charconv": "cpp"
     }
 }

@@ -3,6 +3,7 @@
 
 #include "driver/log.hpp"
 #include "utils.hpp"
+#include <optional>
 
 /// Wraps flash memory to provide a safe and ergonomic API
 class Flash {

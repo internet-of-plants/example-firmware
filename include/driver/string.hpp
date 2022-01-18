@@ -45,13 +45,13 @@ namespace iop {
 using CowString = std::variant<std::string_view, std::string>;
 
 /// Applies FNV hasing to convert a string to a `uint64_t`
-auto hashString(const std::string_view txt) noexcept -> uint64_t;
+auto hashString(std::string_view txt) noexcept -> uint64_t;
 
 /// Checks if a character is ASCII
-auto isPrintable(const char ch) noexcept -> bool;
+auto isPrintable(char ch) noexcept -> bool;
 
 /// Checks if all characters are ASCII
-auto isAllPrintable(const std::string_view txt) noexcept -> bool;
+auto isAllPrintable(std::string_view txt) noexcept -> bool;
 
 /// If some character isn't ASCII it returns a `std::string` based `CowString` that scapes them
 /// If all characters are ASCII it returns a `std::string_view` based `CowString`
@@ -59,7 +59,7 @@ auto isAllPrintable(const std::string_view txt) noexcept -> bool;
 /// They are scaped by converting the `char` to `uint8_t` and then to string, and surrounding it by `<\` and `>`
 ///
 /// For example the code: `iop::scapeNonPrintable("ABC \1")` returns `std::string("ABC <\1>")`
-auto scapeNonPrintable(const std::string_view txt) noexcept -> CowString;
+auto scapeNonPrintable(std::string_view txt) noexcept -> CowString;
 
 using MD5Hash = std::array<char, 32>;
 using MacAddress = std::array<char, 17>;

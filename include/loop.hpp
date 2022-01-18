@@ -61,9 +61,9 @@ public:
     IOP_TRACE();
   }
   ~EventLoop() noexcept = default;
-  auto operator=(EventLoop const &other) noexcept -> EventLoop & = default;
+  auto operator=(EventLoop const &other) noexcept -> EventLoop & = delete;
   auto operator=(EventLoop &&other) noexcept -> EventLoop & = default;
-  EventLoop(EventLoop const &other) noexcept = default;
+  EventLoop(EventLoop const &other) noexcept = delete;
   EventLoop(EventLoop &&other) noexcept = default;
 };
 
