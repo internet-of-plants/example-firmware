@@ -50,7 +50,7 @@ static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   return write(fd, msg, len);
 }
 
-Session::Session(HTTPClient &http, std::string uri, std::shared_ptr<int> fd) noexcept: fd_(std::move(fd)), http_(&http), headers{}, uri_(std::move(uri)) { IOP_TRACE(); }
+Session::Session(HTTPClient &http, std::string uri, std::shared_ptr<int> fd) noexcept: fd_(std::move(fd)), http(std::ref(http)), headers{}, uri_(std::move(uri)) { IOP_TRACE(); }
 Session::~Session() noexcept {
   if (this->fd_.use_count() == 1)
     close(*this->fd_);
@@ -91,7 +91,8 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
   if (iop::data.wifi.status() != driver::StationStatus::GOT_IP) return static_cast<int>(RawStatus::CONNECTION_FAILED);
 
   std::unordered_map<std::string, std::string> responseHeaders;
-  responseHeaders.reserve(this->http_->headersToCollect_.size());
+  iop_assert(this->http, IOP_STATIC_STRING("Session has been moved out"));
+  responseHeaders.reserve(this->http->get().headersToCollect_.size());
   std::string responsePayload;
 
   const std::string_view path(this->uri_.c_str() + this->uri_.find("/", this->uri_.find("://") + 3));
@@ -201,7 +202,8 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
         iop_panic(IOP_STATIC_STRING("Bad software bruh"));
       } else if (buff.find("\r\n") != buff.npos) {
         clientDriverLogger.debug(IOP_STATIC_STRING("Found headers (buffer length: "), std::to_string(buff.length()), IOP_STATIC_STRING(")"));
-        for (const auto &key: this->http_->headersToCollect_) {
+        iop_assert(this->http, IOP_STATIC_STRING("Session has been moved out"));
+        for (const auto &key: this->http->get().headersToCollect_) {
           if (buff.length() < key.length()) continue;
           std::string headerKey(buffer.get(), 0, key.length());
           // Headers can't be UTF8 so we cool

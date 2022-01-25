@@ -61,7 +61,7 @@ class Session {
   #endif
 
   #ifndef IOP_NOOP
-  HTTPClient *http_;
+  std::optional<std::reference_wrapper<HTTPClient>> http;
   std::unordered_map<std::string, std::string> headers;
   std::string uri_;
   #endif

@@ -45,22 +45,11 @@ auto rawStatus(const int code) noexcept -> RawStatus {
   }
 }
 
-Session::Session(HTTPClient &http, std::string uri) noexcept: http_(&http), uri_(std::move(uri)) { IOP_TRACE(); }
+Session::Session(HTTPClient &http, std::string uri) noexcept: http(std::ref(http)), uri_(std::move(uri)) { IOP_TRACE(); }
 Session::~Session() noexcept {
   IOP_TRACE();
-  if (this->http_ && this->http_->http)
-    this->http_->http->end();
-}
-Session::Session(Session&& other) noexcept: http_(other.http_), uri_(std::move(other.uri_)) {
-  IOP_TRACE();
-  other.http_ = nullptr;
-}
-auto Session::operator=(Session&& other) noexcept -> Session & {
-  IOP_TRACE();
-  this->http_ = other.http_;
-  other.http_ = nullptr;
-  this->uri_ = std::move(other.uri_);
-  return *this;
+  if (this->http && this->http->get().http)
+    this->http->get().http->end();
 }
 void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept {
   iop_assert(this->http, IOP_STATIC_STRING("HTTP client is nullptr"));
@@ -72,35 +61,35 @@ std::string Response::header(iop::StaticString key) const noexcept {
   return std::move(value->second);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept {
-  iop_assert(this->http_ && this->http_->http, IOP_STATIC_STRING("Session has been moved out"));
-  this->http_->http->addHeader(String(key.get()), String(value.get()));
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
+  this->http->get().http->addHeader(String(key.get()), String(value.get()));
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept {
-  iop_assert(this->http_ && this->http_->http, IOP_STATIC_STRING("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
   String val;
   val.concat(value.begin(), value.length());
-  this->http_->http->addHeader(String(key.get()), val);
+  this->http->get().http->addHeader(String(key.get()), val);
 }
 void Session::setAuthorization(std::string auth) noexcept {
-  iop_assert(this->http_ && this->http_->http, IOP_STATIC_STRING("Session has been moved out"));
-  this->http_->http->setAuthorization(auth.c_str());
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
+  this->http->get().http->setAuthorization(auth.c_str());
 }
 auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) noexcept -> std::variant<Response, int> {
-  iop_assert(this->http_ && this->http_->http, IOP_STATIC_STRING("Session has been moved out"));
-  const auto code = this->http_->http->sendRequest(method.c_str(), data, len);
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
+  const auto code = this->http->get().http->sendRequest(method.c_str(), data, len);
   if (code < 0) {
     return code;
   }
 
   std::unordered_map<std::string, std::string> headers;
-  headers.reserve(this->http_->http->headers());
-  for (int index = 0; index < this->http_->http->headers(); ++index) {
-    const auto key = std::string(this->http_->http->headerName(index).c_str());
-    const auto value = std::string(this->http_->http->header(index).c_str());
+  headers.reserve(this->http->get().http->headers());
+  for (int index = 0; index < this->http->get().http->headers(); ++index) {
+    const auto key = std::string(this->http->get().http->headerName(index).c_str());
+    const auto value = std::string(this->http->get().http->header(index).c_str());
     headers[key] = value;
   }
 
-  const auto httpString = this->http_->http->getString();
+  const auto httpString = this->http->get().http->getString();
   const auto http_string = std::string(httpString.c_str());
   const auto payload = Payload(http_string);
   const auto response = Response(headers, payload, code);
