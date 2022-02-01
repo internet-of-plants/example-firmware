@@ -2,12 +2,10 @@
 
 #include <Arduino.h>
 
-namespace driver {
-    void setup() noexcept {
-        ::setup();
-    }
+void setup() {
+    driver::setup();
+}
 
-    void loop() noexcept {
-        ::loop();
-    }
+void loop() {
+    driver::loop();
 }

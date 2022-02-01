@@ -62,7 +62,7 @@ private:
   Callback notFoundHandler;
   uint32_t port;
 
-  std::optional<uint32_t> maybeFD;
+  std::optional<int> maybeFD;
   sockaddr_in *address;
 #elif defined(IOP_ESP8266)
   void *server; // ESP8266WebServer

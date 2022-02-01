@@ -90,8 +90,9 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
   }
 
   const auto httpString = this->http->get().http->getString();
-  const auto http_string = std::string(httpString.c_str());
-  const auto payload = Payload(http_string);
+  auto storage = std::vector<uint8_t>();
+  storage.insert(storage.end(), httpString.c_str(), httpString.c_str() + httpString.length());
+  const auto payload = Payload(storage);
   const auto response = Response(headers, payload, code);
   return response;
 }

@@ -12,6 +12,7 @@
 #include <array>
 #include <string>
 #include <cstring>
+#include <vector>
 
 class __FlashStringHelper;
 

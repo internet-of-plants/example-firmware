@@ -20,7 +20,7 @@
 #include <thread>
 #include <chrono>
 
-static size_t send(uint32_t fd, const char * msg, const size_t len) noexcept {
+static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);
   ssize_t sent = 0;
   uint64_t count = 0;
@@ -61,7 +61,7 @@ void HttpServer::begin() noexcept {
   IOP_TRACE();
   this->close();
 
-  int32_t fd = 0;
+  int fd = 0;
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) <= 0) {
     logger().error(IOP_STATIC_STRING("Unable to open socket"));
     return;
@@ -164,16 +164,16 @@ void HttpServer::handleClient() noexcept {
     std::string_view buff(buffer.begin());
     if (len > 0 && firstLine) {
       if (buff.find("POST") != buff.npos) {
-        const ssize_t space = std::string_view(buff.begin() + 5).find(" ");
-        conn.currentRoute = std::string(buff.begin() + 5, space);
+        const size_t space = buff.substr(5).find(" ");
+        conn.currentRoute = buff.substr(5, space);
         logger().debug(IOP_STATIC_STRING("POST: "), conn.currentRoute);
       } else if (buff.find("GET") != buff.npos) {
-        const ssize_t space = std::string_view(buff.begin() + 4).find(" ");
-        conn.currentRoute = std::string(buff.begin() + 4, space);
+        const size_t space = buff.substr(4).find(" ");
+        conn.currentRoute = buff.substr(4, space);
         logger().debug(IOP_STATIC_STRING("GET: "), conn.currentRoute);
       } else if (buff.find("OPTIONS") != buff.npos) {
-        const ssize_t space = std::string_view(buff.begin() + 7).find(" ");
-        conn.currentRoute = std::string(buff.begin() + 7, space);
+        const size_t space = buff.substr(7).find(" ");
+        conn.currentRoute = buff.substr(7, space);
         logger().debug(IOP_STATIC_STRING("OPTIONS: "), conn.currentRoute);
       } else {
         logger().error(IOP_STATIC_STRING("HTTP Method not found: "), buff);
@@ -253,7 +253,7 @@ void HttpServer::close() noexcept {
 }
 
 void HttpServer::on(iop::StaticString uri, HttpServer::Callback handler) noexcept {
-  this->router.emplace(std::move(uri.toString()), std::move(handler));
+  this->router.emplace(uri.toString(), handler);
 }
 //called when handler is not assigned
 void HttpServer::onNotFound(HttpServer::Callback fn) noexcept {
