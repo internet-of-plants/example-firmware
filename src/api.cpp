@@ -8,7 +8,7 @@
 #include <string>
 
 // TODO: have an endpoint to report non 200 response
-// TODO: have an endpoint to report CLIENT_BUFFER_OVERFLOWS
+// TODO: have an endpoint to report BROKEN_CLIENTS
 
 #ifndef IOP_API_DISABLED
 
@@ -32,7 +32,7 @@ auto Api::makeJson(const iop::StaticString contextName, const JsonCallback &json
     return std::nullopt;
   }
 
-  auto &fixed = unused4KbSysStack.text();
+  auto &fixed = globalData.text();
   fixed.fill('\0');
   serializeJson(*doc, fixed.data(), fixed.max_size());
   
@@ -95,7 +95,7 @@ auto Api::reportPanic(const AuthToken &authToken, const PanicData &event) const 
   }
 
   if (!maybeJson)
-    return iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW;
+    return iop::NetworkStatus::BROKEN_CLIENT;
   const auto &json = maybeJson->get();
 
   const auto token = iop::to_view(authToken);
@@ -107,7 +107,7 @@ auto Api::reportPanic(const AuthToken &authToken, const PanicData &event) const 
     this->logger.error(IOP_STATIC_STRING("Unexpected response at Api::reportPanic: "), code);
     return iop::NetworkStatus::BROKEN_SERVER;
   } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status;
+    return response->status();
   }
   iop_panic(IOP_STATIC_STRING("Invalid variant"));
 #else
@@ -131,7 +131,7 @@ auto Api::registerEvent(const AuthToken &authToken,
   // 256 bytes is more than enough (we checked, it doesn't get to 200 bytes)
   auto maybeJson = this->makeJson(IOP_STATIC_STRING("Api::registerEvent"), make);
   if (!maybeJson)
-    return iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW;
+    return iop::NetworkStatus::BROKEN_CLIENT;
   const auto &json = maybeJson->get();
 
   const auto token = iop::to_view(authToken);
@@ -143,7 +143,7 @@ auto Api::registerEvent(const AuthToken &authToken,
     this->logger.error(IOP_STATIC_STRING("Unexpected response at Api::registerEvent: "), code);
     return iop::NetworkStatus::BROKEN_SERVER;
   } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status;
+    return response->status();
   }
   iop_panic(IOP_STATIC_STRING("Invalid variant"));
 #else
@@ -170,7 +170,7 @@ auto Api::authenticate(std::string_view username,
   auto maybeJson = this->makeJson(IOP_STATIC_STRING("Api::authenticate"), make);
 
   if (!maybeJson)
-    return iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW;
+    return iop::NetworkStatus::BROKEN_CLIENT;
   const auto &json = maybeJson->get();
   
   auto const status = this->network.httpPost(IOP_STATIC_STRING("/v1/user/login"), iop::to_view(json));
@@ -183,26 +183,27 @@ auto Api::authenticate(std::string_view username,
   } else if (const auto *response = std::get_if<iop::Response>(&status)) {
     const auto &resp = *response;
 
-    if (resp.status != iop::NetworkStatus::OK) {
-      return resp.status;
+    if (resp.status() != iop::NetworkStatus::OK) {
+      return resp.status();
     }
 
-    if (!resp.payload) {
+
+    const auto payload = resp.payload();
+    if (!payload) {
       this->logger.error(IOP_STATIC_STRING("Server answered OK, but payload is missing"));
       return iop::NetworkStatus::BROKEN_SERVER;
     }
-    const auto &payload = *resp.payload;
 
-    if (!iop::isAllPrintable(payload)) {
-      this->logger.error(IOP_STATIC_STRING("Unprintable payload, this isn't supported: "), iop::to_view(iop::scapeNonPrintable(payload)));
+    if (!iop::isAllPrintable(*payload)) {
+      this->logger.error(IOP_STATIC_STRING("Unprintable payload, this isn't supported: "), iop::to_view(iop::scapeNonPrintable(*payload)));
       return iop::NetworkStatus::BROKEN_SERVER;
     }
-    if (payload.length() != 64) {
-      this->logger.error(IOP_STATIC_STRING("Auth token does not occupy 64 bytes: size = "), std::to_string(payload.length()));
+    if (payload->length() != 64) {
+      this->logger.error(IOP_STATIC_STRING("Auth token does not occupy 64 bytes: size = "), std::to_string(payload->length()));
     }
 
     AuthToken token;
-    memcpy(token.data(), payload.c_str(), 64);
+    memcpy(token.data(), &payload->front(), 64);
     return token;
   }
   iop_panic(IOP_STATIC_STRING("Invalid variant"));
@@ -225,7 +226,7 @@ auto Api::registerLog(const AuthToken &authToken,
     this->logger.error(IOP_STATIC_STRING("Unexpected response at Api::registerLog: "), code);
     return iop::NetworkStatus::BROKEN_SERVER;
   } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status;
+    return response->status();
   }
   iop_panic(IOP_STATIC_STRING("Invalid variant"));
 #else
@@ -233,58 +234,14 @@ auto Api::registerLog(const AuthToken &authToken,
 #endif
 }
 
-#ifdef IOP_ESP8266
-#define HIGH 0x1
-#include "ESP8266httpUpdate.h"
-#endif
-
 // TODO: move upgrade logic to driver
 auto Api::upgrade(const AuthToken &token) const noexcept
     -> iop::NetworkStatus {
   IOP_TRACE();
   this->logger.info(IOP_STATIC_STRING("Upgrading sketch"));
 
-  #ifndef IOP_ESP8266
-  (void) token;
-  #else
   const iop::StaticString path = IOP_STATIC_STRING("/v1/update");
-  const auto uri = String(this->network.uri().get()) + path.get();
-
-  auto *client = iop::data.wifi.client;
-  iop_assert(client, IOP_STATIC_STRING("Wifi has been moved out, client is nullptr"));
-
-  auto ESPhttpUpdate = std::unique_ptr<ESP8266HTTPUpdate>(new (std::nothrow) ESP8266HTTPUpdate());
-  iop_assert(ESPhttpUpdate, IOP_STATIC_STRING("Unable to allocate ESP8266HTTPUpdate"));
-  ESPhttpUpdate->setAuthorization(std::string(iop::to_view(token)).c_str());
-  ESPhttpUpdate->closeConnectionsOnUpdate(true);
-  ESPhttpUpdate->rebootOnUpdate(true);
-  //ESPhttpUpdate->setLedPin(LED_BUILTIN);
-  const auto result = ESPhttpUpdate->update(*client, uri, "");
-
-#ifdef IOP_MOCK_MONITOR
-  return iop::NetworkStatus::OK;
-#endif
-
-switch (result) {
-  case HTTP_UPDATE_NO_UPDATES:
-  case HTTP_UPDATE_OK:
-    return iop::NetworkStatus::OK;
-
-  case HTTP_UPDATE_FAILED:
-  #ifdef IOP_ESP8266
-    // TODO(pc): properly handle ESPhttpUpdate.getLastError()
-    this->logger.error(IOP_STATIC_STRING("Update failed: "),
-                       std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
-  #endif
-    return iop::NetworkStatus::BROKEN_SERVER;
-  }
-  #ifdef IOP_ESP8266
-  // TODO(pc): properly handle ESPhttpUpdate.getLastError()
-  this->logger.error(IOP_STATIC_STRING("Update failed (UNKNOWN): "),
-                     std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
-  #endif
-  #endif
-  return iop::NetworkStatus::BROKEN_SERVER;
+  return this->network.upgrade(path, iop::to_view(token));
 }
 #else
 auto Api::upgrade(const AuthToken &token) const noexcept

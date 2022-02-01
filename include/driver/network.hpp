@@ -4,6 +4,8 @@
 #include "driver/client.hpp"
 #include "driver/log.hpp"
 
+#include <vector>
+
 namespace iop {
 struct Data {
   driver::HTTPClient http;
@@ -18,9 +20,9 @@ extern Data data;
 
 /// Higher level error reporting. Lower level is handled by core
 enum class NetworkStatus {
-  CONNECTION_ISSUES,
+  IO_ERROR,
   BROKEN_SERVER,
-  CLIENT_BUFFER_OVERFLOW, // BROKEN_CLIENT
+  BROKEN_CLIENT,
 
   OK,
   FORBIDDEN,
@@ -42,12 +44,13 @@ public:
 
 
 class Response {
+  NetworkStatus status_;
+  std::optional<std::vector<uint8_t>> payload_;
 public:
-  NetworkStatus status;
-  std::optional<std::string> payload;
-
+  auto status() const noexcept -> NetworkStatus;
+  auto payload() const noexcept -> std::optional<std::string_view>;
   explicit Response(const NetworkStatus &status) noexcept;
-  Response(const NetworkStatus &status, std::string payload) noexcept;
+  Response(const NetworkStatus &status, std::vector<uint8_t> payload) noexcept;
 };
 
 enum class HttpMethod {
@@ -70,7 +73,7 @@ enum class HttpMethod {
 ///
 /// `iop::Network::setUpgradeHook` to set the hook that is called to schedule updates.
 class Network {
-  Log logger;
+  Log logger_;
   StaticString uri_;
 
   /// Sends a custom HTTP request that may be authenticated to the monitor server (primitive used by higher level methods)
@@ -104,10 +107,18 @@ public:
   /// Sends an HTTP post that is not authenticated to the monitor server (used for authentication).
   auto httpPost(StaticString path, std::string_view data) const noexcept -> std::variant<Response, int>;
 
+  /// Sends an HTTP get that is authenticated to the monitor server (used for authentication).
+  auto httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int>;
+
+  /// Fetches firmware upgrade from the network
+  auto upgrade(StaticString path, std::string_view token) const noexcept -> NetworkStatus;
+
   /// Allows properly logging network status
   static auto apiStatusToString(const NetworkStatus &status) noexcept -> StaticString;
   /// Extracts a network status from the raw response
   auto apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus>;
+
+  auto logger() const noexcept -> const Log &;
 };
 
 } // namespace iop

@@ -9,11 +9,11 @@ Ideally we would use zero-runtime-cost abstractions, but cpp doesn't help us mak
 
 Most decisions are listed here. If you find some other questionable decision please file an issue so we can explain them. Or even make a PR documenting them, and why they were made.
 
-- Avoid static variables, heap allocations, big stack usage: put your buffer in unused4KbSysStack
+- Avoid static variables, heap allocations, big stack usage: put your buffer in globalData
 
     Since ESP8266 doesn't have much RAM, and it shares this RAM between IRAM, a few stacks, and regular heap. And that SSL connections uses something like 20kb of regular heap. And the default stack is 4kb We have found problems related to heap fragmentation and stack overflow in rare edge cases. Both of those are hard to debug, recover and fix for good.
 
-    So to avoid that we increase the stack size. But the regular stack uses a neat trick, there is 4kb of sys stack that is unused, so the stack goes there by default. When we increase the stack size, it moves elsewhere and those 4kb get unused. So to avoid wasting space, and help tracking the upper memory bound, we created unused4KbSysStack, so all buffers and critical data-structures tend to go there. If we overflow the size, a static_assert will catch it.
+    So to avoid that we increase the stack size. But the regular stack uses a neat trick, there is 4kb of sys stack that is unused, so the stack goes there by default. When we increase the stack size, it moves elsewhere and those 4kb get unused. So to avoid wasting space, and help tracking the upper memory bound, we created globalData, so all buffers and critical data-structures tend to go there. If we overflow the size, a static_assert will catch it.
 
     This allowed us to reuse buffers and track better the RAM usage, we endedup cleaning the RAM usage by half with this recycling. And avoid heap fragmentation as everything is pre-allocated. And now the system can run trivially for a long time without problems. There are a lot of Strings and ESP8266 libs buffers that can still cause heap fragmentation and eventual issues, but those are much rarer. And we are improving our resources monitoring in the long run, so this can be detected. And a casual reboot from time to time is not a big deal.
 

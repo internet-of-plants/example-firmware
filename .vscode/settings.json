@@ -90,6 +90,9 @@
         "source_location": "cpp",
         "future": "cpp",
         "variant": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "cfloat": "cpp",
+        "climits": "cpp",
+        "cstdbool": "cpp"
     }
 }

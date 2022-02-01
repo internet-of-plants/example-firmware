@@ -12,6 +12,8 @@
 
 #include "driver/panic.hpp"
 
+#include <vector>
+
 namespace iop {
 auto hashString(const std::string_view txt) noexcept -> uint64_t {
   IOP_TRACE();
@@ -80,5 +82,9 @@ auto to_view(const CowString& str) -> std::string_view {
     return iop::to_view(*value);
   }
   iop_panic(IOP_STATIC_STRING("Invalid variant types"));
+}
+
+auto to_view(const std::vector<uint8_t>& vec) -> std::string_view {
+  return std::string_view(reinterpret_cast<const char*>(&vec.front()), vec.size());
 }
 } // namespace iop

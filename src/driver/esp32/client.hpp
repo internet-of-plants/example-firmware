@@ -44,13 +44,13 @@ auto rawStatus(const int code) noexcept -> RawStatus {
   }
 }
 
-Session::Session(HTTPClient &http, std::string uri) noexcept: http_(&http), uri_(std::move(uri)) { IOP_TRACE(); }
+Session::Session(HTTPClient &http, std::string_view uri) noexcept: http_(&http), uri_(uri) { IOP_TRACE(); }
 Session::~Session() noexcept {
   IOP_TRACE();
   if (this->http_ && this->http_->http)
     this->http_->http->end();
 }
-Session::Session(Session&& other) noexcept: http_(other.http_), uri_(std::move(other.uri_)) {
+Session::Session(Session&& other) noexcept: http_(other.http_), uri_(other.uri_) {
   IOP_TRACE();
   other.http_ = nullptr;
 }
@@ -113,7 +113,7 @@ HTTPClient::~HTTPClient() noexcept {
   delete this->http;
 }
 
-std::optional<Session> HTTPClient::begin(std::string uri) noexcept {
+std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept {
   IOP_TRACE(); 
   
   //iop_assert(iop::data.wifi.client, IOP_STATIC_STRING("Wifi has been moved out, client is nullptr"));

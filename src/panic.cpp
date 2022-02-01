@@ -19,11 +19,11 @@ void upgrade() noexcept {
     iop::panicLogger().warn(IOP_STATIC_STRING("Invalid auth token, but keeping since at iop_panic"));
     return;
 
-  case iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW:
+  case iop::NetworkStatus::BROKEN_CLIENT:
     iop_panic(IOP_STATIC_STRING("Api::upgrade internal buffer overflow"));
 
   // Already logged at the network level
-  case iop::NetworkStatus::CONNECTION_ISSUES:
+  case iop::NetworkStatus::IO_ERROR:
   case iop::NetworkStatus::BROKEN_SERVER:
     // Nothing to be done besides retrying later
 
@@ -64,7 +64,7 @@ auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
     iop::panicLogger().warn(IOP_STATIC_STRING("Invalid auth token, but keeping since at iop_panic"));
     return false;
 
-  case iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW:
+  case iop::NetworkStatus::BROKEN_CLIENT:
     // TODO(pc): deal with this, but how? Truncating the msg?
     // Should we have an endpoint to report this type of error that can't
     // trigger it?
@@ -76,7 +76,7 @@ auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
     iop::panicLogger().crit(IOP_STATIC_STRING("Api::reportPanic is broken"));
     return false;
 
-  case iop::NetworkStatus::CONNECTION_ISSUES:
+  case iop::NetworkStatus::IO_ERROR:
     // Nothing to be done besides retrying later
     return false;
 

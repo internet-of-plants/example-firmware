@@ -30,5 +30,5 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
 HTTPClient::HTTPClient() noexcept {}
 HTTPClient::~HTTPClient() noexcept {}
 
-std::optional<Session> HTTPClient::begin(std::string uri) noexcept { (void) uri; return std::nullopt; }
+std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept { (void) uri; return std::nullopt; }
 }

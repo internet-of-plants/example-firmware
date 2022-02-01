@@ -13,7 +13,7 @@ class PanicData;
 ///
 /// The device must be connected to a WiFi network for it to properly work.
 ///
-/// If some method returns `NetworkStatus::CLIENT_BUFFER_OVERFLOW` the method is broken.
+/// If some method returns `NetworkStatus::BROKEN_CLIENT` the method is broken.
 /// It exists to allow for monitoring methods to keep working during critical failures.
 class Api {
 private:
@@ -34,8 +34,8 @@ public:
   ///
   /// OK: success
   /// FORBIDDEN: auth token is invalid
-  /// CONNECTION_ISSUES: problems with connection, retry later?
-  /// CLIENT_BUFFER_OVERFLOW: unreachable, as the route truncates the message until it fits the buffer
+  /// IO_ERROR: problems with connection, retry later?
+  /// BROKEN_CLIENT: unreachable, as the route truncates the message until it fits the buffer
   /// BROKEN_SERVER: must wait until the server is fixed
   auto reportPanic(const AuthToken &authToken, const PanicData &event) const noexcept -> iop::NetworkStatus;
 
@@ -45,8 +45,8 @@ public:
   ///
   /// OK: success
   /// FORBIDDEN: auth token is invalid
-  /// CONNECTION_ISSUES: problems with the connection, retry later?
-  /// CLIENT_BUFFER_OVERFLOW: critical, means the method is broken and a buffer overflows happened
+  /// IO_ERROR: problems with the connection, retry later?
+  /// BROKEN_CLIENT: critical, means the method is broken and a buffer overflows happened
   /// BROKEN_SERVER: must wait until the server is fixed
   auto registerEvent(const AuthToken &token, const Event &event) const noexcept -> iop::NetworkStatus;
 
@@ -56,8 +56,8 @@ public:
   ///
   /// OK: unreachable, as success returns an AuthToken
   /// FORBIDDEN: unreachable, as this route doesn't expect an AuthToken
-  /// CONNECTION_ISSUES: problems with connection, retry later?
-  /// CLIENT_BUFFER_OVERFLOW: critical, means the method is broken and a buffer overflows happened
+  /// IO_ERROR: problems with connection, retry later?
+  /// BROKEN_CLIENT: critical, means the method is broken and a buffer overflows happened
   /// BROKEN_SERVER: must wait until server is fixed
   auto authenticate(std::string_view username, std::string_view password) const noexcept -> std::variant<AuthToken, iop::NetworkStatus>;
 
@@ -67,8 +67,8 @@ public:
   ///
   /// OK: success
   /// FORBIDDEN: auth token is invalid
-  /// CONNECTION_ISSUES: problems with connection, retry later?
-  /// CLIENT_BUFFER_OVERFLOW: critical, means the method is broken and a buffer overflows happened
+  /// IO_ERROR: problems with connection, retry later?
+  /// BROKEN_CLIENT: critical, means the method is broken and a buffer overflows happened
   /// BROKEN_SERVER: must wait until server is fixed
   auto registerLog(const AuthToken &authToken, std::string_view log) const noexcept -> iop::NetworkStatus;
 
@@ -78,8 +78,8 @@ public:
   ///
   /// OK: means no update is available
   /// FORBIDDEN: auth token is invalid
-  /// CONNECTION_ISSUES: problems with connection, retry later?
-  /// CLIENT_BUFFER_OVERFLOW: unreachable as this route doesn't use the payload buffer
+  /// IO_ERROR: problems with connection, retry later?
+  /// BROKEN_CLIENT: unreachable as this route doesn't use the payload buffer
   /// BROKEN_SERVER: must wait until server is fixed
   auto upgrade(const AuthToken &token) const noexcept -> iop::NetworkStatus;
 

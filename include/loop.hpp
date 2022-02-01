@@ -69,7 +69,7 @@ public:
 
 extern EventLoop eventLoop;
 
-class Unused4KbSysStack {
+class GlobalData {
   struct StackStruct {
     std::array<char, 768> text;
     AuthToken token;
@@ -80,14 +80,14 @@ class Unused4KbSysStack {
   //static_assert(sizeof(StackStruct) <= 4096);
 
 public:
-  Unused4KbSysStack() noexcept: data(new (std::nothrow) StackStruct()) {
+  GlobalData() noexcept: data(new (std::nothrow) StackStruct()) {
     iop_assert(data, IOP_STATIC_STRING("Unable to allocate buffer"));
     memset((void*)data, 0, sizeof(StackStruct));
   }
   void reset() noexcept {
     memset((void*)data, 0, sizeof(StackStruct));
   }
-  //Unused4KbSysStack() noexcept: data(reinterpret_cast<StackStruct *>(0x3FFFE000)) {
+  //GlobalData() noexcept: data(reinterpret_cast<StackStruct *>(0x3FFFE000)) {
   //  memset((void*)0x3FFFE000, 0, 4096);
   //}
   //void reset() noexcept {
@@ -107,6 +107,6 @@ public:
   }
   // ...
 };
-extern Unused4KbSysStack unused4KbSysStack;
+extern GlobalData globalData;
 
 #endif

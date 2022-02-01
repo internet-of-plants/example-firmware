@@ -45,7 +45,7 @@ auto rawStatus(const int code) noexcept -> RawStatus {
   }
 }
 
-Session::Session(HTTPClient &http, std::string uri) noexcept: http(std::ref(http)), uri_(std::move(uri)) { IOP_TRACE(); }
+Session::Session(HTTPClient &http, std::string_view uri) noexcept: http(std::ref(http)), uri_(uri) { IOP_TRACE(); }
 Session::~Session() noexcept {
   IOP_TRACE();
   if (this->http && this->http->get().http)
@@ -103,7 +103,7 @@ HTTPClient::~HTTPClient() noexcept {
   delete this->http;
 }
 
-std::optional<Session> HTTPClient::begin(std::string uri) noexcept {
+std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept {
   IOP_TRACE(); 
   
   //iop_assert(iop::data.wifi.client, IOP_STATIC_STRING("Wifi has been moved out, client is nullptr"));
@@ -150,7 +150,9 @@ std::optional<Session> HTTPClient::begin(std::string uri) noexcept {
   iop_assert(iop::data.wifi.client, IOP_STATIC_STRING("Wifi has been moved out, client is nullptr"));
   iop_assert(this->http, IOP_STATIC_STRING("HTTP client is nullptr"));
   //this->http.setReuse(false);
-  if (this->http->begin(*iop::data.wifi.client, String(uri.c_str()))) {
+  auto uriArduino = String();
+  uriArduino.concat(uri.begin(), uri.length());
+  if (this->http->begin(*iop::data.wifi.client, uriArduino)) {
     return Session(*this, uri);
   }
 

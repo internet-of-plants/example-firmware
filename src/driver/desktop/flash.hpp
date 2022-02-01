@@ -19,7 +19,7 @@ void Flash::setup(size_t size) noexcept {
         return;
     }
 
-    file.read((char*) buffer, size);
+    file.read((char*) buffer, static_cast<std::streamsize>(size));
     iop_assert(!file.fail(), IOP_STATIC_STRING("Read failed"));
 
     file.close();
@@ -31,7 +31,7 @@ void Flash::commit() noexcept {
     std::ofstream file("eeprom.dat");
     iop_assert(file.is_open(), IOP_STATIC_STRING("Unable to open eeprom.dat file"));
 
-    file.write((char*) buffer, size);
+    file.write((char*) buffer, static_cast<std::streamsize>(size));
     iop_assert(!file.fail(), IOP_STATIC_STRING("Write failed"));
 
     file.close();

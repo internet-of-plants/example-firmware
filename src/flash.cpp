@@ -38,9 +38,9 @@ auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const
   // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
   const uint8_t *ptr = driver::flash.asRef() + authTokenIndex + 1;
   
-  memcpy(unused4KbSysStack.token().data(), ptr, 64);
+  memcpy(globalData.token().data(), ptr, 64);
 
-  const auto tok = iop::to_view(unused4KbSysStack.token());
+  const auto tok = iop::to_view(globalData.token());
   // AuthToken must be printable US-ASCII (to be stored in HTTP headers))
   if (!iop::isAllPrintable(tok) || tok.length() != 64) {
     this->logger.error(IOP_STATIC_STRING("Auth token was non printable: "), iop::to_view(iop::scapeNonPrintable(tok)));
@@ -50,14 +50,14 @@ auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const
 
   this->logger.trace(IOP_STATIC_STRING("Found Auth token: "), tok);
 
-  const auto & ret = unused4KbSysStack.token();
+  const auto & ret = globalData.token();
   return std::ref(ret);
 }
 
 void Flash::removeToken() const noexcept {
   IOP_TRACE();
 
-  unused4KbSysStack.token().fill('\0');
+  globalData.token().fill('\0');
 
   // Checks if it's written to flash first, avoids wasting writes
   if (driver::flash.read(authTokenIndex) == usedAuthTokenEEPROMFlag) {
@@ -98,12 +98,12 @@ auto Flash::wifi() const noexcept -> std::optional<std::reference_wrapper<const 
 
   // We treat wifi credentials as a blob instead of worrying about encoding
 
-  memcpy(unused4KbSysStack.ssid().data(), ptr, 32);
-  memcpy(unused4KbSysStack.psk().data(), ptr + 32, 64);
+  memcpy(globalData.ssid().data(), ptr, 32);
+  memcpy(globalData.psk().data(), ptr + 32, 64);
 
-  const auto ssidStr = iop::scapeNonPrintable(std::string_view(unused4KbSysStack.ssid().data(), 32));
+  const auto ssidStr = iop::scapeNonPrintable(std::string_view(globalData.ssid().data(), 32));
   this->logger.trace(IOP_STATIC_STRING("Found network credentials: "), iop::to_view(ssidStr));
-  const auto creds = WifiCredentials(unused4KbSysStack.ssid(), unused4KbSysStack.psk());
+  const auto creds = WifiCredentials(globalData.ssid(), globalData.psk());
   return std::make_optional(std::ref(creds));
 }
 
@@ -111,8 +111,8 @@ void Flash::removeWifi() const noexcept {
   IOP_TRACE();
   this->logger.info(IOP_STATIC_STRING("Deleting stored wifi config"));
 
-  unused4KbSysStack.ssid().fill('\0');
-  unused4KbSysStack.psk().fill('\0');
+  globalData.ssid().fill('\0');
+  globalData.psk().fill('\0');
 
   // Checks if it's written to flash first, avoids wasting writes
   if (driver::flash.read(wifiConfigIndex) == usedWifiConfigEEPROMFlag) {

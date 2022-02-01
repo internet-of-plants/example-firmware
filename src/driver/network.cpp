@@ -1,6 +1,7 @@
 #include "driver/network.hpp"
 #include "driver/cert_store.hpp"
 #include "driver/thread.hpp"
+#include "driver/upgrade.hpp"
 
 constexpr static iop::UpgradeHook defaultHook(iop::UpgradeHook::defaultHook);
 
@@ -8,6 +9,12 @@ static iop::UpgradeHook hook(defaultHook);
 static driver::CertStore * maybeCertStore = nullptr;;
 
 namespace iop {
+auto Network::logger() const noexcept -> const Log & {
+  return this->logger_;
+}
+auto Network::upgrade(StaticString path, std::string_view token) const noexcept -> NetworkStatus {
+  return driver::upgrade(*this, path, token);
+}
 void UpgradeHook::defaultHook() noexcept { IOP_TRACE(); }
 void Network::setCertStore(driver::CertStore &store) noexcept {
   maybeCertStore = &store;
@@ -38,13 +45,17 @@ auto Network::httpPost(StaticString path, std::string_view data) const noexcept 
   return this->httpRequest(HttpMethod::POST, std::nullopt, path, data);
 }
 
+auto Network::httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int> {
+  return this->httpRequest(HttpMethod::GET, token, path, data);
+}
+
 auto Network::apiStatusToString(const NetworkStatus &status) noexcept -> StaticString {
   IOP_TRACE();
   switch (status) {
-  case NetworkStatus::CONNECTION_ISSUES:
-    return IOP_STATIC_STRING("CONNECTION_ISSUES");
-  case NetworkStatus::CLIENT_BUFFER_OVERFLOW:
-    return IOP_STATIC_STRING("CLIENT_BUFFER_OVERFLOW");
+  case NetworkStatus::IO_ERROR:
+    return IOP_STATIC_STRING("IO_ERROR");
+  case NetworkStatus::BROKEN_CLIENT:
+    return IOP_STATIC_STRING("BROKEN_CLIENT");
   case NetworkStatus::BROKEN_SERVER:
     return IOP_STATIC_STRING("BROKEN_SERVER");
   case NetworkStatus::OK:
@@ -60,23 +71,23 @@ auto Network::apiStatus(const driver::RawStatus &raw) const noexcept -> std::opt
   switch (raw) {
   case driver::RawStatus::CONNECTION_FAILED:
   case driver::RawStatus::CONNECTION_LOST:
-    this->logger.warn(IOP_STATIC_STRING("Connection failed. Code: "), std::to_string(static_cast<int>(raw)));
-    return NetworkStatus::CONNECTION_ISSUES;
+    this->logger().warn(IOP_STATIC_STRING("Connection failed. Code: "), std::to_string(static_cast<int>(raw)));
+    return NetworkStatus::IO_ERROR;
 
   case driver::RawStatus::SEND_FAILED:
   case driver::RawStatus::READ_FAILED:
-    this->logger.warn(IOP_STATIC_STRING("Pipe is broken. Code: "), std::to_string(static_cast<int>(raw)));
-    return NetworkStatus::CONNECTION_ISSUES;
+    this->logger().warn(IOP_STATIC_STRING("Pipe is broken. Code: "), std::to_string(static_cast<int>(raw)));
+    return NetworkStatus::IO_ERROR;
 
   case driver::RawStatus::ENCODING_NOT_SUPPORTED:
   case driver::RawStatus::NO_SERVER:
   case driver::RawStatus::SERVER_ERROR:
-    this->logger.error(IOP_STATIC_STRING("Server is broken. Code: "), std::to_string(static_cast<int>(raw)));
+    this->logger().error(IOP_STATIC_STRING("Server is broken. Code: "), std::to_string(static_cast<int>(raw)));
     return NetworkStatus::BROKEN_SERVER;
 
   case driver::RawStatus::READ_TIMEOUT:
-    this->logger.warn(IOP_STATIC_STRING("Network timeout triggered"));
-    return NetworkStatus::CONNECTION_ISSUES;
+    this->logger().warn(IOP_STATIC_STRING("Network timeout triggered"));
+    return NetworkStatus::IO_ERROR;
 
   case driver::RawStatus::OK:
     return NetworkStatus::OK;
@@ -91,17 +102,24 @@ auto Network::apiStatus(const driver::RawStatus &raw) const noexcept -> std::opt
 }
 
 Network::Network(StaticString uri, const LogLevel &logLevel) noexcept
-  : logger(logLevel, IOP_STATIC_STRING("NETWORK")), uri_(std::move(uri)) {
+  : logger_(logLevel, IOP_STATIC_STRING("NETWORK")), uri_(std::move(uri)) {
   IOP_TRACE();
 }
 
 Response::Response(const NetworkStatus &status) noexcept
-    : status(status), payload(std::optional<std::string>()) {
+    : status_(status), payload_(std::optional<std::vector<uint8_t>>()) {
   IOP_TRACE();
 }
-Response::Response(const NetworkStatus &status, std::string payload) noexcept
-    : status(status), payload(payload) {
+Response::Response(const NetworkStatus &status, std::vector<uint8_t> payload) noexcept
+    : status_(status), payload_(payload) {
   IOP_TRACE();
+}
+auto Response::status() const noexcept -> NetworkStatus {
+  return this->status_;
+}
+auto Response::payload() const noexcept -> std::optional<std::string_view> {
+  if (!this->payload_) return std::nullopt;
+  return iop::to_view(*this->payload_);
 }
 }
 
@@ -132,23 +150,21 @@ auto Network::httpRequest(const HttpMethod method_,
 
   const auto data_ = data.value_or(std::string_view());
 
-  this->logger.debug(method, IOP_STATIC_STRING(" to "), this->uri(), path, IOP_STATIC_STRING(", data length: "), std::to_string(data_.length()));
+  this->logger().debug(method, IOP_STATIC_STRING(" to "), this->uri(), path, IOP_STATIC_STRING(", data length: "), std::to_string(data_.length()));
 
   // TODO: this may log sensitive information, network logging is currently
   // capped at info because of that, right
   if (data)
-    this->logger.debug(*data);
+    this->logger().debug(*data);
   
-  logMemory(this->logger);
-
-  this->logger.debug(IOP_STATIC_STRING("Begin"));
+  this->logger().debug(IOP_STATIC_STRING("Begin"));
   auto maybeSession = iop::data.http.begin(uri);
   if (!maybeSession) {
-    this->logger.warn(IOP_STATIC_STRING("Failed to begin http connection to "), iop::to_view(uri));
-    return Response(NetworkStatus::CONNECTION_ISSUES);
+    this->logger().warn(IOP_STATIC_STRING("Failed to begin http connection to "), iop::to_view(uri));
+    return Response(NetworkStatus::IO_ERROR);
   }
   auto &session = *maybeSession;
-  this->logger.trace(IOP_STATIC_STRING("Began HTTP connection"));
+  this->logger().trace(IOP_STATIC_STRING("Began HTTP connection"));
 
   if (token) {
     const auto tok = *token;
@@ -163,9 +179,11 @@ auto Network::httpRequest(const HttpMethod method_,
   // monitoring
   {
     auto str = iop::to_view(driver::device.binaryMD5());
-    session.addHeader(IOP_STATIC_STRING("VERSION"), std::string(str));
+    session.addHeader(IOP_STATIC_STRING("VERSION"), str);
+    session.addHeader(IOP_STATIC_STRING("x-ESP8266-sketch-md5"), str);
+
     str = iop::to_view(driver::device.macAddress());
-    session.addHeader(IOP_STATIC_STRING("MAC_ADDRESS"), std::string(str));
+    session.addHeader(IOP_STATIC_STRING("MAC_ADDRESS"), str);
   }
  
   session.addHeader(IOP_STATIC_STRING("FREE_STACK"), std::to_string(driver::device.availableStack()));
@@ -184,42 +202,43 @@ auto Network::httpRequest(const HttpMethod method_,
   session.addHeader(IOP_STATIC_STRING("ORIGIN"), this->uri());
   session.addHeader(IOP_STATIC_STRING("DRIVER"), driver::device.platform());
 
+
   const uint8_t *const data__ = reinterpret_cast<const uint8_t *>(data_.begin());
 
-  this->logger.debug(IOP_STATIC_STRING("Making HTTP request"));
+  this->logger().debug(IOP_STATIC_STRING("Making HTTP request"));
 
   auto responseVariant = session.sendRequest(method.toString().c_str(), data__, data_.length());
   if (const auto *error = std::get_if<int>(&responseVariant)) {
     return *error;
   } else if (auto *response = std::get_if<driver::Response>(&responseVariant)) {
-    this->logger.debug(IOP_STATIC_STRING("Made HTTP request")); 
+    this->logger().debug(IOP_STATIC_STRING("Made HTTP request")); 
 
     // Handle system upgrade request
     const auto upgrade = response->header(IOP_STATIC_STRING("LATEST_VERSION"));
     if (upgrade.length() > 0 && memcmp(upgrade.c_str(), driver::device.binaryMD5().data(), 32) != 0) {
-      this->logger.info(IOP_STATIC_STRING("Scheduled upgrade"));
+      this->logger().info(IOP_STATIC_STRING("Scheduled upgrade"));
       hook.schedule();
     }
 
     // TODO: move this to inside driver::HTTPClient logic
     const auto rawStatus = driver::rawStatus(response->status());
     if (rawStatus == driver::RawStatus::UNKNOWN) {
-      this->logger.warn(IOP_STATIC_STRING("Unknown response code: "), std::to_string(response->status()));
+      this->logger().warn(IOP_STATIC_STRING("Unknown response code: "), std::to_string(response->status()));
     }
     
     const auto rawStatusStr = driver::rawStatusToString(rawStatus);
 
-    this->logger.debug(IOP_STATIC_STRING("Response code ("), iop::to_view(std::to_string(response->status())), IOP_STATIC_STRING("): "), rawStatusStr);
+    this->logger().debug(IOP_STATIC_STRING("Response code ("), iop::to_view(std::to_string(response->status())), IOP_STATIC_STRING("): "), rawStatusStr);
 
     // TODO: this is broken because it's not lazy, it should be a HTTPClient setting that bails out if it's bigger, and encapsulated in the API
     /*
     constexpr const int32_t maxPayloadSizeAcceptable = 2048;
-    if (unused4KbSysStack.http().getSize() > maxPayloadSizeAcceptable) {
-      unused4KbSysStack.http().end();
+    if (globalData.http().getSize() > maxPayloadSizeAcceptable) {
+      globalData.http().end();
       const auto lengthStr = std::to_string(response.payload.length());
-      this->logger.error(IOP_STATIC_STRING("Payload from server was too big: "), lengthStr);
-      unused4KbSysStack.response() = Response(NetworkStatus::BROKEN_SERVER);
-      return unused4KbSysStack.response();
+      this->logger().error(IOP_STATIC_STRING("Payload from server was too big: "), lengthStr);
+      globalData.response() = Response(NetworkStatus::BROKEN_SERVER);
+      return globalData.response();
     }
     */
 
@@ -228,10 +247,9 @@ auto Network::httpRequest(const HttpMethod method_,
     if (maybeApiStatus) {
       // The payload is always downloaded, since we check for its size and the
       // origin is trusted. If it's there it's supposed to be there.
-      auto payload = response->await().payload;
-      this->logger.debug(IOP_STATIC_STRING("Payload (") , std::to_string(payload.length()), IOP_STATIC_STRING("): "), iop::to_view(payload));
-      // TODO: every response occupies 2x the size because we convert String -> std::string
-      return Response(*maybeApiStatus, std::string(payload));
+      auto payload = std::move(response->await().payload);
+      this->logger().debug(IOP_STATIC_STRING("Payload (") , std::to_string(payload.size()), IOP_STATIC_STRING("): "), iop::to_view(iop::scapeNonPrintable(iop::to_view(payload).substr(0, payload.size() > 30 ? 30 : payload.size()))));
+      return Response(*maybeApiStatus, std::move(payload));
     }
     return response->status();
   }

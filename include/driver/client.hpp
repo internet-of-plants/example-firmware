@@ -32,9 +32,9 @@ auto rawStatusToString(RawStatus status) noexcept -> iop::StaticString;
 
 class Payload {
 public:
-  std::string payload;
-  Payload() noexcept: payload("") {}
-  explicit Payload(std::string data) noexcept: payload(std::move(data)) {}
+  std::vector<uint8_t> payload;
+  Payload() noexcept: payload({}) {}
+  explicit Payload(std::vector<uint8_t> data) noexcept: payload(std::move(data)) {}
 };
 
 class Response {
@@ -55,6 +55,7 @@ public:
 
 class HTTPClient;
 
+// References HTTPClient, should never outlive it
 class Session {
   #ifdef IOP_DESKTOP
   std::shared_ptr<int> fd_;
@@ -63,13 +64,13 @@ class Session {
   #ifndef IOP_NOOP
   std::optional<std::reference_wrapper<HTTPClient>> http;
   std::unordered_map<std::string, std::string> headers;
-  std::string uri_;
+  std::string_view uri_;
   #endif
 
   #ifdef IOP_DESKTOP
-  Session(HTTPClient &http, std::string uri, std::shared_ptr<int> fd) noexcept;
+  Session(HTTPClient &http, std::string_view uri, std::shared_ptr<int> fd) noexcept;
   #elif defined(IOP_ESP8266)
-  Session(HTTPClient &http, std::string uri) noexcept;
+  Session(HTTPClient &http, std::string_view uri) noexcept;
   #elif defined(IOP_NOOP)
   Session() noexcept = default;
   #else
@@ -98,7 +99,7 @@ class HTTPClient {
 public:
   HTTPClient() noexcept;
   ~HTTPClient() noexcept;
-  auto begin(std::string uri) noexcept -> std::optional<Session>;
+  auto begin(std::string_view uri) noexcept -> std::optional<Session>;
 
   // TODO: improve this method name
   void headersToCollect(const char * headers[], size_t count) noexcept;

@@ -15,7 +15,6 @@ void EventLoop::setup() noexcept {
   this->sensors.setup();
   this->api().setup();
   this->credentialsServer.setup();
-  (void)iop::data; // sets Raw Data so drivers can access the HttpClient, it's a horrible hack;
   this->logger.info(IOP_STATIC_STRING("Setup finished"));
   this->logger.info(IOP_STATIC_STRING("MD5: "), iop::to_view(driver::device.binaryMD5()));
 }
@@ -188,11 +187,11 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
           this->logger.warn(IOP_STATIC_STRING("Invalid auth token, but keeping since at OTA"));
           return;
 
-        case iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW:
+        case iop::NetworkStatus::BROKEN_CLIENT:
           iop_panic(IOP_STATIC_STRING("Api::upgrade internal buffer overflow"));
 
         // Already logged at the network level
-        case iop::NetworkStatus::CONNECTION_ISSUES:
+        case iop::NetworkStatus::IO_ERROR:
         case iop::NetworkStatus::BROKEN_SERVER:
           // Nothing to be done besides retrying later
 
@@ -218,13 +217,13 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
       const auto config = iop::data.wifi.credentials();
       // We treat wifi credentials as a blob instead of worrying about encoding
 
-      unused4KbSysStack.ssid().fill('\0');
-      memcpy(unused4KbSysStack.ssid().data(), config.first.begin(), sizeof(config.first));
-      this->logger.info(IOP_STATIC_STRING("Connected to network: "), iop::to_view(iop::scapeNonPrintable(std::string_view(unused4KbSysStack.ssid().data(), 32))));
+      globalData.ssid().fill('\0');
+      memcpy(globalData.ssid().data(), config.first.begin(), sizeof(config.first));
+      this->logger.info(IOP_STATIC_STRING("Connected to network: "), iop::to_view(iop::scapeNonPrintable(std::string_view(globalData.ssid().data(), 32))));
 
-      unused4KbSysStack.psk().fill('\0');
-      memcpy(unused4KbSysStack.psk().data(), config.second.begin(), sizeof(config.second));
-      this->flash().setWifi(WifiCredentials(unused4KbSysStack.ssid(), unused4KbSysStack.psk()));
+      globalData.psk().fill('\0');
+      memcpy(globalData.psk().data(), config.second.begin(), sizeof(config.second));
+      this->flash().setWifi(WifiCredentials(globalData.ssid(), globalData.psk()));
 #endif
       (void)2; // Satisfies linter
       break;
@@ -255,13 +254,13 @@ void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
       this->flash().removeToken();
       return;
 
-    case iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW:
+    case iop::NetworkStatus::BROKEN_CLIENT:
       this->logger.error(IOP_STATIC_STRING("Unable to send measurements"));
       iop_panic(IOP_STATIC_STRING("Api::registerEvent internal buffer overflow"));
 
     // Already logged at the Network level
     case iop::NetworkStatus::BROKEN_SERVER:
-    case iop::NetworkStatus::CONNECTION_ISSUES:
+    case iop::NetworkStatus::IO_ERROR:
       // Nothing to be done besides retrying later
 
     case iop::NetworkStatus::OK: // Cool beans
@@ -312,11 +311,11 @@ auto EventLoop::authenticate(std::string_view username, std::string_view passwor
       this->logger.error(IOP_STATIC_STRING("Invalid IoP credentials ("), iop::Network::apiStatusToString(status), IOP_STATIC_STRING("): "), username);
       return std::nullopt;
 
-    case iop::NetworkStatus::CLIENT_BUFFER_OVERFLOW:
+    case iop::NetworkStatus::BROKEN_CLIENT:
       iop_panic(IOP_STATIC_STRING("CredentialsServer::authenticate internal buffer overflow"));
 
     // Already logged at the Network level
-    case iop::NetworkStatus::CONNECTION_ISSUES:
+    case iop::NetworkStatus::IO_ERROR:
     case iop::NetworkStatus::BROKEN_SERVER:
       // Nothing to be done besides retrying later
       return std::nullopt;
