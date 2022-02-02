@@ -10,13 +10,13 @@ When the device is online and authenticated to the server a new plant is automat
 
 If it isn't connected to a WiFi Access Point, or it isn't authenticated to the monitor server, it will open its own WiFi Access Point with a captive portal that will collect the WiFi and IoP credentials.
 
-When the credentials are supplied it will authenticate with the WiFi Access Point and then make a login request to the monitor server. The IoP credentials aren't stored in flash, they are used to obtain an authentication token for that plant from the server, the token then is stored (if the authentication succeeds).
+When the credentials are supplied it will authenticate with the WiFi Access Point and then make a login request to the monitor server. The IoP credentials aren't stored in storage, they are used to obtain an authentication token for that plant from the server, the token then is stored (if the authentication succeeds).
 
 After the authentication it will periodically collect sensors data and report the events to the monitor server.
 
 It will also send every log with a criticality of at least INFO to the monitor server, so you can keep track of the device as it runs.
 
-If the monitor server provides a firmware update, the next time the device talks with the server it will schedule a download (probably when sending the logs of the incomming monitoring event), the update will be requested from the monitor server and after it's stored in flash the device will be rebooted and start running the new version (the bootloader will replace the versions in a power-loss resistant way).
+If the monitor server provides a firmware update, the next time the device talks with the server it will schedule a download (probably when sending the logs of the incomming monitoring event), the update will be requested from the monitor server and after it's stored in storage the device will be rebooted and start running the new version (the bootloader will replace the versions in a power-loss resistant way).
 
 If some critical problem happens (the panic function is called) it will be reported to the server and the device will constantly request the monitor server for updates.
 

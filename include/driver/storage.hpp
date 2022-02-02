@@ -1,12 +1,12 @@
-#ifndef IOP_DRIVER_FLASH_HPP
-#define IOP_DRIVER_FLASH_HPP
+#ifndef IOP_DRIVER_STORAGE_HPP
+#define IOP_DRIVER_STORAGE_HPP
 
 #include "driver/panic.hpp"
 #include <stdint.h>
 #include <optional>
 
 namespace driver {
-class Flash {
+class Storage {
   size_t size = 0;
   uint8_t *buffer = nullptr;
   
@@ -20,11 +20,11 @@ public:
 
   template<typename T> 
   void put(const size_t address, const T &t) {
-    iop_assert(address + sizeof(T) <= this->size, IOP_STATIC_STRING("Flash overflow: ").toString() + std::to_string(address + sizeof(T)));
+    iop_assert(address + sizeof(T) <= this->size, IOP_STATIC_STRING("Storage overflow: ").toString() + std::to_string(address + sizeof(T)));
     memcpy(this->asMut() + address, &t, sizeof(T));
   }
 };
-extern Flash flash;
+extern Storage storage;
 }
 
 #endif

@@ -2,7 +2,7 @@
 #include "driver/panic.hpp"
 
 namespace driver {
-CertStore::CertStore(CertList list) noexcept: internal(new (std::nothrow) InternalCertStore(list)) {
+  CertStore::CertStore(CertList list) noexcept: internal(new (std::nothrow) InternalCertStore(list)) {
   iop_assert(internal, IOP_STATIC_STRING("Unable to allocate InternalCertStore"));
 }
 CertStore::~CertStore() noexcept {
@@ -36,8 +36,7 @@ auto InternalCertStore::findHashedTA(void *ctx, void *hashed_dn, size_t len) -> 
       // It shouldn't be a const function. But the upstream API is just that way
       // NOLINTNEXTLINE cppcoreguidelines-pro-type-const-cast
       iop_assert(cs->x509, IOP_STATIC_STRING("Unable to allocate X509List"));
-      const auto *taTmp = cs->x509->getTrustAnchors();
-      auto *ta = const_cast<br_x509_trust_anchor *>(taTmp);
+      br_x509_trust_anchor *ta = (br_x509_trust_anchor*)cs->x509->getTrustAnchors();
       memcpy_P(ta->dn.data, cert.index, hashSize);
       ta->dn.len = hashSize;
 

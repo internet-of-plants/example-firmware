@@ -7,7 +7,7 @@
 #include "driver/network.hpp"
 #include "driver/panic.hpp"
 #include "configuration.hpp"
-#include "flash.hpp"
+#include "storage.hpp"
 #include "sensors.hpp"
 #include "server.hpp"
 #include "utils.hpp"
@@ -19,21 +19,21 @@ private:
   CredentialsServer credentialsServer;
   Api api_;
   iop::Log logger;
-  Flash flash_;
+  Storage storage_;
   Sensors sensors;
 
-  iop::esp_time nextMeasurement;
-  iop::esp_time nextYieldLog;
-  iop::esp_time nextNTPSync;
-  iop::esp_time nextHandleConnectionLost;
+  iop::time nextMeasurement;
+  iop::time nextYieldLog;
+  iop::time nextNTPSync;
+  iop::time nextHandleConnectionLost;
 
-  iop::esp_time nextTryFlashWifiCredentials;
-  iop::esp_time nextTryHardcodedWifiCredentials;
-  iop::esp_time nextTryHardcodedIopCredentials;
+  iop::time nextTryStorageWifiCredentials;
+  iop::time nextTryHardcodedWifiCredentials;
+  iop::time nextTryHardcodedIopCredentials;
 
 public:
   Api const & api() const noexcept { return this->api_; }
-  Flash const & flash() const noexcept { return this->flash_; }
+  Storage const & storage() const noexcept { return this->storage_; }
   void setup() noexcept;
   void loop() noexcept;
   /// Connects to WiFi
@@ -54,10 +54,10 @@ public:
   explicit EventLoop(iop::StaticString uri, iop::LogLevel logLevel_) noexcept
       : credentialsServer(logLevel_),
         api_(std::move(uri), logLevel_),
-        logger(logLevel_, IOP_STATIC_STRING("LOOP")), flash_(logLevel_),
+        logger(logLevel_, IOP_STATIC_STRING("LOOP")), storage_(logLevel_),
         sensors(config::soilResistivityPower, config::soilTemperature, config::airTempAndHumidity, config::dhtVersion),
         nextMeasurement(0), nextYieldLog(0), nextNTPSync(0), nextHandleConnectionLost(0),
-        nextTryFlashWifiCredentials(0), nextTryHardcodedWifiCredentials(0), nextTryHardcodedIopCredentials(0) {
+        nextTryStorageWifiCredentials(0), nextTryHardcodedWifiCredentials(0), nextTryHardcodedIopCredentials(0) {
     IOP_TRACE();
   }
   ~EventLoop() noexcept = default;

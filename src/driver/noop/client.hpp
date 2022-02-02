@@ -18,8 +18,6 @@ auto rawStatus(const int code) noexcept -> RawStatus {
 }
 
 Session::~Session() noexcept {}
-Session::Session(Session&& other) noexcept { (void) other; }
-auto Session::operator=(Session&& other) noexcept -> Session & { (void) other; return *this; }
 void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept { (void) headers; (void) count; }
 std::string Response::header(iop::StaticString key) const noexcept { (void) key; return ""; }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept { (void) key; (void) value; }

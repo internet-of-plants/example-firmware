@@ -8,7 +8,7 @@ Using this safe and ergonomic core we were able to create high level code that s
 
 Strings are heavily used throught the code. And we try our best to avoid using raw pointers. Because of that a few types of strings were created to abstract all our usages in a type-safe and UB-free way.
 
-Strings are implied to be all printable. There are methods to check it like `iop::isAllPrintable`. But you should check when deserializing data using `Unsafe` functions. Doing this has exposed bugs in our code before. Not everywhere is ensured to check, but we have a lot of tracing logs to detect non-printable characters in strings. Also `String` is `Arduino` core, we can't force it to be only printable always, but we do check when we get it from things like the network (or flash memory).
+Strings are implied to be all printable. There are methods to check it like `iop::isAllPrintable`. But you should check when deserializing data using `Unsafe` functions. Doing this has exposed bugs in our code before. Not everywhere is ensured to check, but we have a lot of tracing logs to detect non-printable characters in strings. Also `String` is `Arduino` core, we can't force it to be only printable always, but we do check when we get it from things like the network (or storage memory).
 
 There are many string types:
 
@@ -16,7 +16,7 @@ There are many string types:
 
 They are all supposed to be converted to a `std::string_view` before being handled as strings (except `StaticString`), if a constructor is not available, use `iop::to_view`. But `std::string_view` shouldn't be stored around, it's just a reference. So store the actual string storage and use the view to have access to a unified string API.
 
-`iop::StaticString` can't be converted to `std::string_view` because its data is stored in PROGMEM, so needs 32 bits aligned reads. Some functions like `strlen` will cause a hardware exception if IOP_ROM data is passed to it. It needs functions ended in `_P` like `strlen_P` or to be converted to a `std::string`. This is still good because stack space is way smaller than heap space, so we copy the data from flash to the heap keeping the stack small. And immediately after release the memory. It can cause heap fragmentation if you keep the string around, but any "long-living" allocation can.
+`iop::StaticString` can't be converted to `std::string_view` because its data is stored in PROGMEM, so needs 32 bits aligned reads. Some functions like `strlen` will cause a hardware exception if IOP_ROM data is passed to it. It needs functions ended in `_P` like `strlen_P` or to be converted to a `std::string`. This is still good because stack space is way smaller than heap space, so we copy the data from storage to the heap keeping the stack small. And immediately after release the memory. It can cause heap fragmentation if you keep the string around, but any "long-living" allocation can.
 
 ## Sum types
 

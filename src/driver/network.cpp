@@ -178,7 +178,7 @@ auto Network::httpRequest(const HttpMethod method_,
   // Authentication headers, identifies device and detects updates, perf
   // monitoring
   {
-    auto str = iop::to_view(driver::device.binaryMD5());
+    auto str = iop::to_view(driver::device.firmwareMD5());
     session.addHeader(IOP_STATIC_STRING("VERSION"), str);
     session.addHeader(IOP_STATIC_STRING("x-ESP8266-sketch-md5"), str);
 
@@ -215,7 +215,7 @@ auto Network::httpRequest(const HttpMethod method_,
 
     // Handle system upgrade request
     const auto upgrade = response->header(IOP_STATIC_STRING("LATEST_VERSION"));
-    if (upgrade.length() > 0 && memcmp(upgrade.c_str(), driver::device.binaryMD5().data(), 32) != 0) {
+    if (upgrade.length() > 0 && memcmp(upgrade.c_str(), driver::device.firmwareMD5().data(), 32) != 0) {
       this->logger().info(IOP_STATIC_STRING("Scheduled upgrade"));
       hook.schedule();
     }

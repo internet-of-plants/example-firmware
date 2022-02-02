@@ -10,16 +10,16 @@ void EventLoop::setup() noexcept {
   this->logger.info(IOP_STATIC_STRING("Start Setup"));
   driver::gpio.mode(driver::io::LED_BUILTIN, driver::io::Mode::OUTPUT);
 
-  Flash::setup();
+  Storage::setup();
   reset::setup();
   this->sensors.setup();
   this->api().setup();
   this->credentialsServer.setup();
   this->logger.info(IOP_STATIC_STRING("Setup finished"));
-  this->logger.info(IOP_STATIC_STRING("MD5: "), iop::to_view(driver::device.binaryMD5()));
+  this->logger.info(IOP_STATIC_STRING("MD5: "), iop::to_view(driver::device.firmwareMD5()));
 }
 
-constexpr static uint64_t intervalTryFlashWifiCredentialsMillis =
+constexpr static uint64_t intervalTryStorageWifiCredentialsMillis =
     60 * 60 * 1000; // 1 hour
 
 constexpr static uint64_t intervalTryHardcodedWifiCredentialsMillis =
@@ -35,7 +35,7 @@ void EventLoop::loop() noexcept {
     iop::logMemory(this->logger);
 #endif
 
-    const auto authToken = this->flash().token();
+    const auto authToken = this->storage().token();
 
     // Handle all queued interrupts (only allows one of each kind concurrently)
     while (true) {
@@ -90,20 +90,20 @@ void EventLoop::handleNotConnected() noexcept {
 
   // If connection is lost frequently we open the credentials server, to
   // allow replacing the wifi credentials. Since we only remove it
-  // from flash if it's going to be replaced by a new one (allows
+  // from storage if it's going to be replaced by a new one (allows
   // for more resiliency) - or during factory reset
   constexpr const uint32_t oneMinute = 60 * 1000;
 
-  const auto &wifi = this->flash().wifi();
+  const auto &wifi = this->storage().wifi();
 
   const auto isConnected = iop::Network::isConnected();
-  if (!isConnected && wifi && this->nextTryFlashWifiCredentials <= now) {
-    this->nextTryFlashWifiCredentials = now + intervalTryFlashWifiCredentialsMillis;
+  if (!isConnected && wifi && this->nextTryStorageWifiCredentials <= now) {
+    this->nextTryStorageWifiCredentials = now + intervalTryStorageWifiCredentialsMillis;
 
     const auto &stored = wifi->get();
     const auto ssid = std::string_view(stored.ssid.get().data(), stored.ssid.get().max_size());
     const auto psk = std::string_view(stored.password.get().data(), stored.password.get().max_size());
-    this->logger.info(IOP_STATIC_STRING("Trying wifi credentials stored in flash: "), iop::to_view(iop::scapeNonPrintable(ssid)));
+    this->logger.info(IOP_STATIC_STRING("Trying wifi credentials stored in storage: "), iop::to_view(iop::scapeNonPrintable(ssid)));
     this->logger.debug(IOP_STATIC_STRING("Password:"), iop::to_view(iop::scapeNonPrintable(psk)));
     this->connect(ssid, psk);
 
@@ -151,7 +151,7 @@ void EventLoop::handleIopCredentials() noexcept {
     const auto password = *config::iopPassword();
     const auto tok = this->authenticate(email.toString(), password.toString(), this->api());
     if (tok)
-      this->flash().setToken(*tok);
+      this->storage().setToken(*tok);
   } else {
     this->handleCredentials();
   }
@@ -171,8 +171,8 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
     case InterruptEvent::FACTORY_RESET:
 #ifdef IOP_FACTORY_RESET
       this->logger.warn(IOP_STATIC_STRING("Factory Reset: deleting stored credentials"));
-      this->flash().removeWifi();
-      this->flash().removeToken();
+      this->storage().removeWifi();
+      this->storage().removeToken();
       iop::Network::disconnect();
 #endif
       (void)0; // Satisfies linter
@@ -223,7 +223,7 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
 
       globalData.psk().fill('\0');
       memcpy(globalData.psk().data(), config.second.begin(), sizeof(config.second));
-      this->flash().setWifi(WifiCredentials(globalData.ssid(), globalData.psk()));
+      this->storage().setWifi(WifiCredentials(globalData.ssid(), globalData.psk()));
 #endif
       (void)2; // Satisfies linter
       break;
@@ -236,7 +236,7 @@ void EventLoop::handleCredentials() noexcept {
     const auto token = this->credentialsServer.serve(this->api());
 
     if (token)
-      this->flash().setToken(*token);
+      this->storage().setToken(*token);
 }
 
 void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
@@ -251,7 +251,7 @@ void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
     case iop::NetworkStatus::FORBIDDEN:
       this->logger.error(IOP_STATIC_STRING("Unable to send measurements"));
       this->logger.warn(IOP_STATIC_STRING("Auth token was refused, deleting it"));
-      this->flash().removeToken();
+      this->storage().removeToken();
       return;
 
     case iop::NetworkStatus::BROKEN_CLIENT:

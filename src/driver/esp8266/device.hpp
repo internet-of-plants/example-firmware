@@ -27,24 +27,24 @@ auto Device::platform() const noexcept -> ::iop::StaticString {
 auto Device::vcc() const noexcept -> uint16_t {
     return ESP.getVcc();
 }
-auto Device::availableFlash() const noexcept -> size_t {
+auto Device::availableSpace() const noexcept -> uintmax_t {
     return ESP.getFreeSketchSpace();
 }
-auto Device::availableStack() const noexcept -> size_t {
+auto Device::availableStack() const noexcept -> uintmax_t {
     //disable_extra4k_at_link_time();
     ESP.resetFreeContStack();
     return ESP.getFreeContStack();
 }
-auto Device::availableHeap() const noexcept -> size_t {
+auto Device::availableHeap() const noexcept -> uintmax_t {
     return ESP.getFreeHeap();
 }
-auto Device::biggestHeapBlock() const noexcept -> size_t {
+auto Device::biggestHeapBlock() const noexcept -> uintmax_t {
     return ESP.getMaxFreeBlockSize();
 }
 void Device::deepSleep(const size_t seconds) const noexcept {
     ESP.deepSleep(seconds * 1000000);
 }
-iop::MD5Hash & Device::binaryMD5() const noexcept {
+iop::MD5Hash & Device::firmwareMD5() const noexcept {
   static bool cached = false;
   if (cached)
     return iop::data.md5;
@@ -77,7 +77,7 @@ iop::MacAddress & Device::macAddress() const noexcept {
   std::array<uint8_t, 6> buff = {0};
   wifi_get_macaddr(STATION_IF, buff.data());
 
-  const auto *fmt = IOP_FLASH_RAW("%02X:%02X:%02X:%02X:%02X:%02X");
+  const auto *fmt = IOP_STORAGE_RAW("%02X:%02X:%02X:%02X:%02X:%02X");
   sprintf_P(mac.data(), fmt, buff[0], buff[1], buff[2], buff[3], buff[4], buff[5]);
   return mac;
 }

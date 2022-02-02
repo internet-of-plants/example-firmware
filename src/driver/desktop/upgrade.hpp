@@ -6,9 +6,6 @@
 #include <filesystem>
 
 namespace driver {
-
-extern char *filename;
-
 auto upgrade(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> iop::NetworkStatus {
     const auto variant = network.httpGet(path, authorization_header, "");
     if (const auto *response = std::get_if<iop::Response>(&variant)) {
@@ -18,13 +15,9 @@ auto upgrade(const iop::Network &network, const iop::StaticString path, const st
             return iop::NetworkStatus::BROKEN_SERVER;
         }
 
-        // TODO: properly log filesystem errors
-        if (filename == NULL) {
-            static char staticFilename[] = "upgraded_firmware.bin";
-            filename = staticFilename;
-        }
+        const auto filename = std::filesystem::current_path();
 
-        network.logger().info(IOP_STATIC_STRING("Upgrading binary file: "), filename);
+        network.logger().info(IOP_STATIC_STRING("Upgrading binary file: "), std::string_view(filename.c_str()));
 
         std::ofstream file(filename);
         if (!file.is_open()) {
@@ -49,10 +42,11 @@ auto upgrade(const iop::Network &network, const iop::StaticString path, const st
         std::filesystem::permissions(filename, std::filesystem::perms::owner_all | std::filesystem::perms::others_exec | std::filesystem::perms::others_read | std::filesystem::perms::group_exec | std::filesystem::perms::group_read, code);
         if (code) {
             network.logger().error(IOP_STATIC_STRING("Unable to set file as executable: "), std::to_string(code.value()));
+            return iop::NetworkStatus::IO_ERROR;
         }
 
         network.logger().info(IOP_STATIC_STRING("Upgrading runtime"));
-        exit(system(filename));
+        exit(system(filename.c_str()));
     } else if (const auto *status = std::get_if<int>(&variant)) {
         network.logger().error(IOP_STATIC_STRING("Invalid status returned by the server on upgrade: "), std::to_string(*status));
     }

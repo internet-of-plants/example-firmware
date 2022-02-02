@@ -21,7 +21,7 @@ class Api;
 /// with `close` when wifi + monitor server credentials are retrieved
 ///
 /// It connects to WiFi directly. So you need a callback to detect when that happens
-/// to be able to store the credentials to flash
+/// to be able to store the credentials to storage
 class CredentialsServer {
 private:
   iop::Log logger;

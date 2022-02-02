@@ -6,7 +6,7 @@
 
 void upgrade() noexcept {
   IOP_TRACE();
-  const auto token = eventLoop.flash().token();
+  const auto token = eventLoop.storage().token();
   if (!token)
     return;
 
@@ -36,7 +36,7 @@ void upgrade() noexcept {
   iop::panicLogger().error(IOP_STATIC_STRING("Bad status, EventLoop::handleInterrupt "), str);
 }
 
-// TODO(pc): save unique panics to flash
+// TODO(pc): save unique panics to storage
 // TODO(pc): dump stackstrace on iop_panic
 // https://github.com/sticilface/ESPmanager/blob/dce7fc06806a90c179a40eb2d74f4278fffad5b4/src/SaveStack.cpp
 auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
@@ -44,7 +44,7 @@ auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
     -> bool {
   IOP_TRACE();
 
-  const auto token = eventLoop.flash().token();
+  const auto token = eventLoop.storage().token();
   if (!token) {
     iop::panicLogger().crit(IOP_STATIC_STRING("No auth token, unable to report iop_panic"));
     return false;
@@ -100,12 +100,12 @@ static void halt(const std::string_view &msg,
 
   constexpr const uint32_t oneHour = ((uint32_t)60) * 60;
   while (true) {
-    if (!eventLoop.flash().wifi()) {
+    if (!eventLoop.storage().wifi()) {
       iop::panicLogger().warn(IOP_STATIC_STRING("Nothing we can do, no wifi config available"));
       break;
     }
 
-    if (!eventLoop.flash().token()) {
+    if (!eventLoop.storage().token()) {
       iop::panicLogger().warn(IOP_STATIC_STRING("Nothing we can do, no auth token available"));
       break;
     }

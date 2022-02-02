@@ -165,7 +165,7 @@ void CredentialsServer::setup() const noexcept {
     logger.info(IOP_STATIC_STRING("Serving captive portal"));
 
     const auto mustConnect = !iop::Network::isConnected();
-    const auto needsIopAuth = !eventLoop.flash().token();
+    const auto needsIopAuth = !eventLoop.storage().token();
 
     auto len = pageHTMLStart().length() + pageHTMLEnd().length() + script().length();
     len += mustConnect ? wifiHTML().length() : wifiOverwriteHTML().length();
@@ -248,14 +248,14 @@ auto CredentialsServer::serve(const Api &api) noexcept
     if (tok)
       return tok;
 
-    // WiFi Credentials stored in flash
+    // WiFi Credentials stored in storage
 
     // Wifi connection errors are hard to debug
     // (see countless open issues about it at esp8266/Arduino's github)
     // One example citing others:
     // https://github.com/esp8266/Arduino/issues/7432
     //
-    // So we never delete a flash stored wifi credentials (outside of factory
+    // So we never delete a storage stored wifi credentials (outside of factory
     // reset), we have a timer to avoid constantly retrying a bad credential.
   }
 

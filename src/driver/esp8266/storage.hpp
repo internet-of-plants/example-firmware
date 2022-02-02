@@ -1,5 +1,6 @@
-#include "driver/flash.hpp"
+#include "driver/storage.hpp"
 #include "driver/panic.hpp"
+#include "sys/pgmspace.h"
 #include "EEPROM.h"
 
 // TODO: move this to global structure
@@ -7,18 +8,18 @@
 
 namespace driver {
 // TODO: properly handle EEPROM internal errors
-void Flash::setup(size_t size) noexcept {
+void Storage::setup(size_t size) noexcept {
     this->size = size;
     EEPROM.begin(size);
 }
-void Flash::commit() noexcept {
-    // TODO: report errors in flash usage
+void Storage::commit() noexcept {
+    // TODO: report errors in storage usage
     iop_assert(EEPROM.commit(), IOP_STATIC_STRING("EEPROM commit failed"));
 }
-uint8_t const * Flash::asRef() const noexcept {
+uint8_t const * Storage::asRef() const noexcept {
     return EEPROM.getConstDataPtr();
 }
-uint8_t * Flash::asMut() noexcept {
+uint8_t * Storage::asMut() noexcept {
     return EEPROM.getDataPtr();
 }
 }

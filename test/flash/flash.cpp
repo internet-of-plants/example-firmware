@@ -1,30 +1,30 @@
-#include "flash.hpp"
+#include "storage.hpp"
 
 #include <unity.h>
 
 void authToken() {
-  const Flash flash(iop::LogLevel::WARN);
-  flash.setup();
-  flash.removeToken();
-  TEST_ASSERT(!flash.token());
-  flash.setToken(AuthToken::fromBytesUnsafe(reinterpret_cast<const uint8_t*>("Bruh"), 4));
-  TEST_ASSERT(memcmp(flash.token().value().constPtr(), "Bruh", 4) == 0);
-  flash.removeToken();
-  TEST_ASSERT(!flash.token());
+  const Storage storage(iop::LogLevel::WARN);
+  storage.setup();
+  storage.removeToken();
+  TEST_ASSERT(!storage.token());
+  storage.setToken(AuthToken::fromBytesUnsafe(reinterpret_cast<const uint8_t*>("Bruh"), 4));
+  TEST_ASSERT(memcmp(storage.token().value().constPtr(), "Bruh", 4) == 0);
+  storage.removeToken();
+  TEST_ASSERT(!storage.token());
 }
 
 void wifiConfig() {
-  const Flash flash(iop::LogLevel::WARN);
-  flash.setup();
-  flash.removeWifi();
-  TEST_ASSERT(!flash.wifi());
+  const Storage storage(iop::LogLevel::WARN);
+  storage.setup();
+  storage.removeWifi();
+  TEST_ASSERT(!storage.wifi());
   const auto bruh = reinterpret_cast<const uint8_t*>("Bruh");
   const WifiCredentials creds(NetworkName::fromBytesUnsafe(bruh, 4), NetworkPassword::fromBytesUnsafe(bruh, 4));
-  flash.setWifi(creds);
-  TEST_ASSERT(flash.wifi().value().ssid.asString().borrow() == creds.ssid.asString().borrow());
-  TEST_ASSERT(flash.wifi().value().password.asString().borrow() == creds.password.asString().borrow());
-  flash.removeWifi();
-  TEST_ASSERT(!flash.wifi());
+  storage.setWifi(creds);
+  TEST_ASSERT(storage.wifi().value().ssid.asString().borrow() == creds.ssid.asString().borrow());
+  TEST_ASSERT(storage.wifi().value().password.asString().borrow() == creds.password.asString().borrow());
+  storage.removeWifi();
+  TEST_ASSERT(!storage.wifi());
 }
 
 int main(int argc, char** argv) {

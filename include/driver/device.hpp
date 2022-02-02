@@ -25,13 +25,13 @@ public:
 class Device {
 public:
   void syncNTP() const noexcept;
-  auto availableFlash() const noexcept -> size_t;
-  auto availableStack() const noexcept -> size_t;
-  auto availableHeap() const noexcept -> size_t;
+  auto availableSpace() const noexcept -> uintmax_t;
+  auto availableStack() const noexcept -> uintmax_t;
+  auto availableHeap() const noexcept -> uintmax_t;
   auto vcc() const noexcept -> uint16_t;
-  auto biggestHeapBlock() const noexcept -> size_t;
+  auto biggestHeapBlock() const noexcept -> uintmax_t;
   void deepSleep(size_t seconds) const noexcept;
-  std::array<char, 32>& binaryMD5() const noexcept;
+  std::array<char, 32>& firmwareMD5() const noexcept;
   std::array<char, 17>& macAddress() const noexcept;
   ::iop::StaticString platform() const noexcept;
 };

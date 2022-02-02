@@ -25,18 +25,18 @@ class __FlashStringHelper;
 // Arduino's PROGMEM
 #define IOP_ROM __attribute__((section( "\".irom.text." __FILE__ "." INTERNAL_IOP__STRINGIZE(__LINE__) "."  INTERNAL_IOP__STRINGIZE(__COUNTER__) "\"")))
 
-#define IOP_INTERNAL_FLASH_RAW_N(s,n) (__extension__({static const char __pstr__[] __attribute__((__aligned__(n))) __attribute__((section( "\".irom0.pstr." __FILE__ "." INTERNAL_IOP__STRINGIZE(__LINE__) "."  INTERNAL_IOP__STRINGIZE(__COUNTER__) "\", \"aSM\", @progbits, 1 #"))) = (s); &__pstr__[0];}))
-#define IOP_FLASH_RAW(s) IOP_INTERNAL_FLASH_RAW_N(s, 4)
+#define IOP_INTERNAL_STORAGE_RAW_N(s,n) (__extension__({static const char __pstr__[] __attribute__((__aligned__(n))) __attribute__((section( "\".irom0.pstr." __FILE__ "." INTERNAL_IOP__STRINGIZE(__LINE__) "."  INTERNAL_IOP__STRINGIZE(__COUNTER__) "\", \"aSM\", @progbits, 1 #"))) = (s); &__pstr__[0];}))
+#define IOP_STORAGE_RAW(s) IOP_INTERNAL_STORAGE_RAW_N(s, 4)
 
 #elif (defined(IOP_NOOP) && !defined(ESP8266)) || defined(IOP_ESP32) || defined(IOP_DESKTOP)
 #define IOP_RAM
 #define IOP_ROM
-#define IOP_FLASH_RAW(x) x
+#define IOP_STORAGE_RAW(x) x
 #else
 #error "Target not supported"
 #endif
 
-#define IOP_STATIC_STRING(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_FLASH_RAW(string_literal)))
+#define IOP_STATIC_STRING(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_STORAGE_RAW(string_literal)))
 
 namespace iop {
 /// Allows for possibly destructive operations, like scaping non printable characters

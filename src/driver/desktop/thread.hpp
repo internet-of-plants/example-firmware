@@ -12,8 +12,12 @@ void Thread::yield() const noexcept {
 void Thread::panic_() const noexcept {
   std::abort();
 }
+
 static const auto start = std::chrono::system_clock::now().time_since_epoch();
-auto Thread::now() const noexcept -> iop::esp_time {
-  return std::chrono::duration_cast<std::chrono::milliseconds>((std::chrono::system_clock::now() - start).time_since_epoch()).count();
+auto Thread::now() const noexcept -> iop::time {
+  const auto epoch = (std::chrono::system_clock::now() - start).time_since_epoch();
+  const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(epoch).count();
+  if (time < 0) return 0;
+  return static_cast<iop::time>(time);
 }
 }

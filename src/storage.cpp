@@ -1,17 +1,17 @@
-#include "flash.hpp"
+#include "storage.hpp"
 #include "loop.hpp"
 
-#ifndef IOP_FLASH_DISABLED
-#include "driver/flash.hpp"
+#ifndef IOP_STORAGE_DISABLED
+#include "driver/storage.hpp"
 #include "driver/panic.hpp"
 
 constexpr const uint16_t EEPROM_SIZE = 512;
 
-// If another type is to be written to flash be carefull not to mess with what
+// If another type is to be written to storage be carefull not to mess with what
 // already is there and update the static_assert below. Same deal for removing
 // types.
 
-// Magic bytes. Flags to check if information is written to flash.
+// Magic bytes. Flags to check if information is written to storage.
 // Chosen by fair dice roll, garanteed to be random
 const uint8_t usedWifiConfigEEPROMFlag = 125;
 const uint8_t usedAuthTokenEEPROMFlag = 126;
@@ -27,16 +27,16 @@ const uint16_t authTokenIndex = wifiConfigIndex + wifiConfigSize;
 static_assert(authTokenIndex + authTokenSize < EEPROM_SIZE,
               "EEPROM too small to store needed credentials");
 
-auto Flash::setup() noexcept -> void { driver::flash.setup(EEPROM_SIZE); }
-auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const AuthToken>> {
+auto Storage::setup() noexcept -> void { driver::storage.setup(EEPROM_SIZE); }
+auto Storage::token() const noexcept -> std::optional<std::reference_wrapper<const AuthToken>> {
   IOP_TRACE();
 
-  // Check if magic byte is set in flash (as in, something is stored)
-  if (driver::flash.read(authTokenIndex) != usedAuthTokenEEPROMFlag)
+  // Check if magic byte is set in storage (as in, something is stored)
+  if (driver::storage.read(authTokenIndex) != usedAuthTokenEEPROMFlag)
     return std::nullopt;
 
   // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
-  const uint8_t *ptr = driver::flash.asRef() + authTokenIndex + 1;
+  const uint8_t *ptr = driver::storage.asRef() + authTokenIndex + 1;
   
   memcpy(globalData.token().data(), ptr, 64);
 
@@ -54,47 +54,47 @@ auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const
   return std::ref(ret);
 }
 
-void Flash::removeToken() const noexcept {
+void Storage::removeToken() const noexcept {
   IOP_TRACE();
 
   globalData.token().fill('\0');
 
-  // Checks if it's written to flash first, avoids wasting writes
-  if (driver::flash.read(authTokenIndex) == usedAuthTokenEEPROMFlag) {
+  // Checks if it's written to storage first, avoids wasting writes
+  if (driver::storage.read(authTokenIndex) == usedAuthTokenEEPROMFlag) {
     this->logger.info(IOP_STATIC_STRING("Deleting stored auth token"));
 
     // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
-    memset(driver::flash.asMut() + authTokenIndex, 0, authTokenSize);
-    driver::flash.commit();
+    memset(driver::storage.asMut() + authTokenIndex, 0, authTokenSize);
+    driver::storage.commit();
   }
 }
 
-void Flash::setToken(const AuthToken &token) const noexcept {
+void Storage::setToken(const AuthToken &token) const noexcept {
   IOP_TRACE();
 
   // Avoids re-writing same data
   const size_t size = sizeof(AuthToken);
-  const auto *tok = driver::flash.asRef() + authTokenIndex + 1;  
+  const auto *tok = driver::storage.asRef() + authTokenIndex + 1;  
   if (memcmp(tok, token.begin(), size) == 0) {
-    this->logger.debug(IOP_STATIC_STRING("Auth token already stored in flash"));
+    this->logger.debug(IOP_STATIC_STRING("Auth token already stored in storage"));
     return;
   }
 
   this->logger.info(IOP_STATIC_STRING("Writing auth token to storage: "), iop::to_view(token));
-  driver::flash.write(authTokenIndex, usedAuthTokenEEPROMFlag);
-  driver::flash.put(authTokenIndex + 1, token);
-  driver::flash.commit();
+  driver::storage.write(authTokenIndex, usedAuthTokenEEPROMFlag);
+  driver::storage.put(authTokenIndex + 1, token);
+  driver::storage.commit();
 }
 
-auto Flash::wifi() const noexcept -> std::optional<std::reference_wrapper<const WifiCredentials>> {
+auto Storage::wifi() const noexcept -> std::optional<std::reference_wrapper<const WifiCredentials>> {
   IOP_TRACE();
 
-  // Check if magic byte is set in flash (as in, something is stored)
-  if (driver::flash.read(wifiConfigIndex) != usedWifiConfigEEPROMFlag)
+  // Check if magic byte is set in storage (as in, something is stored)
+  if (driver::storage.read(wifiConfigIndex) != usedWifiConfigEEPROMFlag)
     return std::nullopt;
 
   // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
-  const auto *ptr = driver::flash.asRef() + wifiConfigIndex + 1;
+  const auto *ptr = driver::storage.asRef() + wifiConfigIndex + 1;
 
   // We treat wifi credentials as a blob instead of worrying about encoding
 
@@ -107,75 +107,75 @@ auto Flash::wifi() const noexcept -> std::optional<std::reference_wrapper<const 
   return std::make_optional(std::ref(creds));
 }
 
-void Flash::removeWifi() const noexcept {
+void Storage::removeWifi() const noexcept {
   IOP_TRACE();
   this->logger.info(IOP_STATIC_STRING("Deleting stored wifi config"));
 
   globalData.ssid().fill('\0');
   globalData.psk().fill('\0');
 
-  // Checks if it's written to flash first, avoids wasting writes
-  if (driver::flash.read(wifiConfigIndex) == usedWifiConfigEEPROMFlag) {
+  // Checks if it's written to storage first, avoids wasting writes
+  if (driver::storage.read(wifiConfigIndex) == usedWifiConfigEEPROMFlag) {
     // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
-    memset(driver::flash.asMut() + wifiConfigIndex, 0, wifiConfigSize);
-    driver::flash.commit();
+    memset(driver::storage.asMut() + wifiConfigIndex, 0, wifiConfigSize);
+    driver::storage.commit();
   }
 }
 
-void Flash::setWifi(const WifiCredentials &config) const noexcept {
+void Storage::setWifi(const WifiCredentials &config) const noexcept {
   IOP_TRACE();
 
   // Avoids re-writing same data
   const size_t ssidSize = sizeof(NetworkName);
   const size_t pskSize = sizeof(NetworkPassword);
-  const auto *ssid = driver::flash.asRef() + wifiConfigIndex + 1;  
+  const auto *ssid = driver::storage.asRef() + wifiConfigIndex + 1;  
 
   // Theoretically SSIDs can have a nullptr inside of it, but currently ESP8266 gives us random garbage after the first '\0' instead of zeroing the rest
   // So we do not accept SSIDs with a nullptr in the middle
   const auto sameSSID = strncmp(reinterpret_cast<const char*>(ssid), config.ssid.get().begin(), ssidSize) == 0;
   const auto samePSK = strncmp(reinterpret_cast<const char*>(ssid + ssidSize), config.password.get().begin(), pskSize) == 0;
   if (sameSSID && samePSK) {
-    this->logger.debug(IOP_STATIC_STRING("WiFi credentials already stored in flash"));
+    this->logger.debug(IOP_STATIC_STRING("WiFi credentials already stored in storage"));
     return;
   }
 
   this->logger.info(IOP_STATIC_STRING("Writing wifi credentials to storage: "), iop::to_view(config.ssid, ssidSize));
   this->logger.debug(IOP_STATIC_STRING("WiFi Creds: "), iop::to_view(config.ssid, ssidSize), IOP_STATIC_STRING(" "), iop::to_view(config.password, pskSize));
 
-  driver::flash.write(wifiConfigIndex, usedWifiConfigEEPROMFlag);
-  driver::flash.put(wifiConfigIndex + 1, config.ssid.get());
-  driver::flash.put(wifiConfigIndex + 1 + 32, config.password.get());
-  driver::flash.commit();
+  driver::storage.write(wifiConfigIndex, usedWifiConfigEEPROMFlag);
+  driver::storage.put(wifiConfigIndex + 1, config.ssid.get());
+  driver::storage.put(wifiConfigIndex + 1 + 32, config.password.get());
+  driver::storage.commit();
 }
 #endif
 
-#ifdef IOP_FLASH_DISABLED
-void Flash::setup() noexcept { IOP_TRACE(); }
-auto Flash::token() const noexcept -> std::optional<std::reference_wrapper<const AuthToken>> {
+#ifdef IOP_STORAGE_DISABLED
+void Storage::setup() noexcept { IOP_TRACE(); }
+auto Storage::token() const noexcept -> std::optional<std::reference_wrapper<const AuthToken>> {
   (void)*this;
   IOP_TRACE();
   return {};
 }
-void Flash::removeToken() const noexcept {
+void Storage::removeToken() const noexcept {
   (void)*this;
   IOP_TRACE();
 }
-void Flash::setToken(const AuthToken &token) const noexcept {
+void Storage::setToken(const AuthToken &token) const noexcept {
   (void)*this;
   IOP_TRACE();
   (void)token;
 }
-void Flash::removeWifi() const noexcept {
+void Storage::removeWifi() const noexcept {
   (void)*this;
   IOP_TRACE();
 }
 
-auto Flash::wifi() const noexcept -> std::optional<std::reference_wrapper<const WifiCredentials>> {
+auto Storage::wifi() const noexcept -> std::optional<std::reference_wrapper<const WifiCredentials>> {
   (void)*this;
   IOP_TRACE();
   return {};
 }
-void Flash::setWifi(const WifiCredentials &config) const noexcept {
+void Storage::setWifi(const WifiCredentials &config) const noexcept {
   (void)*this;
   IOP_TRACE();
   (void)config;

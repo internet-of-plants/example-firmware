@@ -1,5 +1,4 @@
 #include "driver/wifi.hpp"
-#include "driver/interrupt.hpp"
 #include "driver/esp32/internal_cert_store.hpp"
 #include "driver/panic.hpp"
 #include "ESP8266WiFi.h"
@@ -92,8 +91,9 @@ std::string Wifi::localIP() const noexcept {
 
 void Wifi::stationDisconnect() const noexcept {
     IOP_TRACE()
-    const driver::InterruptLock _guard;
+    ETS_UART_INTR_DISABLE(); // NOLINT hicpp-signed-bitwise
     wifi_station_disconnect();
+    ETS_UART_INTR_ENABLE(); // NOLINT hicpp-signed-bitwise
 }
 
 std::pair<std::array<char, 32>, std::array<char, 64>> Wifi::credentials() const noexcept {

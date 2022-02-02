@@ -13,6 +13,6 @@ auto Network::httpRequest(const HttpMethod method_,
   (void)path;
   (void)data;
   IOP_TRACE();
-  return Response(NetworkStatus::OK, "");
+  return Response(NetworkStatus::OK, {});
 }
 }

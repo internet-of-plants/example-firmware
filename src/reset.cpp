@@ -4,7 +4,7 @@
 #include "driver/thread.hpp"
 #include "configuration.hpp"
 
-static volatile iop::esp_time resetStateTime = 0;
+static volatile iop::time resetStateTime = 0;
 
 void IOP_RAM buttonChanged() noexcept {
   // IOP_TRACE();

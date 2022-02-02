@@ -1,18 +1,18 @@
-#ifndef IOP_FLASH_HPP
-#define IOP_FLASH_HPP
+#ifndef IOP_STORAGE_HPP
+#define IOP_STORAGE_HPP
 
 #include "driver/log.hpp"
 #include "utils.hpp"
 #include <optional>
 
-/// Wraps flash memory to provide a safe and ergonomic API
-class Flash {
+/// Wraps storage memory to provide a safe and ergonomic API
+class Storage {
   iop::Log logger;
 
 public:
-  explicit Flash(iop::LogLevel logLevel) noexcept: logger(logLevel, IOP_STATIC_STRING("FLASH")) {}
+  explicit Storage(iop::LogLevel logLevel) noexcept: logger(logLevel, IOP_STATIC_STRING("STORAGE")) {}
 
-  /// Initializes flash memory storage
+  /// Initializes storage memory storage
   static auto setup() noexcept -> void;
 
   auto token() const noexcept -> std::optional<std::reference_wrapper<const AuthToken>>;
@@ -24,8 +24,8 @@ public:
   void setWifi(const WifiCredentials &config) const noexcept;
 };
 
-#ifndef IOP_FLASH
-#define IOP_FLASH_DISABLED
+#ifndef IOP_STORAGE
+#define IOP_STORAGE_DISABLED
 #endif
 
 #endif

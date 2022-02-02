@@ -11,7 +11,7 @@ void Thread::yield() const noexcept {
 void Thread::panic_() const noexcept {
     __panic_func(__FILE__, __LINE__, __PRETTY_FUNCTION__);
 }
-auto Thread::now() const noexcept -> iop::esp_time {
+auto Thread::now() const noexcept -> iop::time {
     return millis();
 }
 }

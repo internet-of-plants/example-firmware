@@ -127,7 +127,7 @@ public:
       : level_{level}, target_(std::move(target)) {}
 
   /// Replaces current hook for the argument. 
-  /// It's very useful to support other logging channels, like network or flash.
+  /// It's very useful to support other logging channels, like network or storage.
   ///
   /// The default just prints to `UART0`. Assume it has been initialized.
   /// So if you don't want to use `UART0` undefine `IOP_SERIAL` to turn the default hooks into noops.

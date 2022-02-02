@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 namespace iop {
-using esp_time = unsigned long; // NOLINT google-runtime-int
+using time = uintmax_t;
 }
 
 namespace driver {
 class Thread {
 public:
-  auto now() const noexcept -> iop::esp_time;
+  auto now() const noexcept -> iop::time;
   void sleep(uint64_t ms) const noexcept;
   void yield() const noexcept;
   void panic_() const noexcept __attribute__((noreturn));

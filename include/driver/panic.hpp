@@ -38,7 +38,7 @@ public:
 };
 
 /// Sets new panic hook. Very useful to support panics that report to
-/// the network, write to flash, and try to update, for example.
+/// the network, write to storage, and try to update, for example.
 /// The default just prints to UART0 and halts
 void setPanicHook(PanicHook hook) noexcept;
 
@@ -57,7 +57,7 @@ Log & panicLogger() noexcept;
 /// Call panics hooks with specified message
 /// Data: Message + Line + Function + File
 ///
-/// Custom panic hooks can be set, to provide for network logging of the panic, flash logging, reporting of the stack trace, waiting for remote updates, etc
+/// Custom panic hooks can be set, to provide for network logging of the panic, storage logging, reporting of the stack trace, waiting for remote updates, etc
 #define iop_panic(msg) ::iop::panicHandler((msg), IOP_CTX())
 
 /// Calls `iop_panic` with provided message if condition is false
