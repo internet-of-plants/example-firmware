@@ -102,6 +102,9 @@ public:
   iop::StaticString file;
   uint32_t line;
   iop::StaticString func;
+
+  PanicData(std::string_view msg_, iop::StaticString file_, uint32_t line_, iop::StaticString func_) noexcept:
+    msg(msg_), file(file_), line(line_), func(func_) {}
 };
 
 #ifndef IOP_MONITOR

@@ -65,6 +65,9 @@ struct Event {
   float airHeatIndexCelsius;
   float soilTemperatureCelsius;
   uint16_t soilResistivityRaw;
+
+  Event(float airTemp, float airHum, float airHeatIndex, float soilTemp, uint16_t soilResistivity) noexcept:
+    airTemperatureCelsius(airTemp), airHumidityPercentage(airHum), airHeatIndexCelsius(airHeatIndex), soilTemperatureCelsius(soilTemp), soilResistivityRaw(soilResistivity) {}
 };
 
 #endif

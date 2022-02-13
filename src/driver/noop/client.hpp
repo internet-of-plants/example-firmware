@@ -22,6 +22,8 @@ void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept
 std::string Response::header(iop::StaticString key) const noexcept { (void) key; return ""; }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept { (void) key; (void) value; }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept { (void) key; (void) value; }
+void Session::addHeader(std::string_view key, iop::StaticString value) noexcept { (void) key; (void) value; }
+void Session::addHeader(std::string_view key, std::string_view value) noexcept { (void) key; (void) value; }
 void Session::setAuthorization(std::string auth) noexcept { (void) auth; }
 auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) noexcept -> std::variant<Response, int> { (void) method; (void) data; (void) len; return 500; }
 

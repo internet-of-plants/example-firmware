@@ -91,13 +91,7 @@ void Sensors::setup() noexcept {
 auto Sensors::measure() noexcept -> Event {
   IOP_TRACE();
   (void)*this;
-  return (Event) {
-    .airTemperatureCelsius = 0.0,
-    .airHumidityPercentage = 0.0,
-    .airHeatIndexCelsius = 0.0,
-    .soilTemperatureCelsius = 0.0,
-    .soilResistivityRaw = 0,
-  };
+  return Event(0.0, 0.0, 0.0, 0.0, 0);
 }
 
 #endif

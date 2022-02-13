@@ -26,7 +26,7 @@ auto Device::platform() const noexcept -> ::iop::StaticString {
 auto Device::vcc() const noexcept -> uint16_t {
     return ESP.getVcc();
 }
-auto Device::availableSpace() const noexcept -> uintmax_t {
+auto Device::availableStorage() const noexcept -> uintmax_t {
     return ESP.getFreeSketchSpace();
 }
 auto Device::availableStack() const noexcept -> uintmax_t {

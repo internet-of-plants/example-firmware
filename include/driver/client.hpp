@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <optional>
+#include <memory>
 
 class HTTPClient;
 
@@ -83,6 +84,8 @@ public:
   auto sendRequest(std::string method, const uint8_t *data, size_t len) noexcept -> std::variant<Response, int>;
   void addHeader(iop::StaticString key, iop::StaticString value) noexcept;
   void addHeader(iop::StaticString key, std::string_view value) noexcept;
+  void addHeader(std::string_view key, iop::StaticString value) noexcept;
+  void addHeader(std::string_view key, std::string_view value) noexcept;
   void setAuthorization(std::string auth) noexcept;
   ~Session() noexcept;
 };

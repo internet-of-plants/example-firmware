@@ -50,12 +50,7 @@ auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
     return false;
   }
 
-  const auto panicData = (PanicData){
-      msg,
-      file,
-      line,
-      func,
-  };
+  const PanicData panicData(msg, file, line, func);
 
   const auto status = eventLoop.api().reportPanic(*token, panicData);
 

@@ -70,6 +70,21 @@ void Session::addHeader(iop::StaticString key, std::string_view value) noexcept 
   val.concat(value.begin(), value.length());
   this->http->get().http->addHeader(String(key.get()), val);
 }
+void Session::addHeader(std::string_view key, iop::StaticString value) noexcept {
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
+  String header;
+  header.concat(key.begin(), key.length());
+  this->http->get().http->addHeader(header, String(value.get()));
+}
+void Session::addHeader(std::string_view key, std::string_view value) noexcept {
+  iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
+  String val;
+  val.concat(value.begin(), value.length());
+
+  String header;
+  header.concat(key.begin(), key.length());
+  this->http->get().http->addHeader(header, val);
+}
 void Session::setAuthorization(std::string auth) noexcept {
   iop_assert(this->http && this->http->get().http, IOP_STATIC_STRING("Session has been moved out"));
   this->http->get().http->setAuthorization(auth.c_str());

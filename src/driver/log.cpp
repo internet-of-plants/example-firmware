@@ -1,14 +1,14 @@
 #ifndef IOP_SERIAL
 #include "driver/noop/log.hpp"
 #elif defined(IOP_DESKTOP)
-#include "driver/desktop/log.hpp"
+#include "driver/cpp17/log.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/log.hpp"
 #elif defined(IOP_NOOP)
 #ifdef ARDUINO
 #include "driver/esp8266/log.hpp"
 #else
-#include "driver/desktop/log.hpp"
+#include "driver/cpp17/log.hpp"
 #endif
 #elif defined(IOP_ESP32)
 #include "driver/esp32/log.hpp"
@@ -214,22 +214,27 @@ Tracer::Tracer(CodePoint point) noexcept : point(std::move(point)) {
   Log::print(this->point.func(), LogLevel::TRACE, LogType::CONTINUITY);
   Log::print(IOP_STATIC_STRING(", at file "), LogLevel::TRACE, LogType::CONTINUITY);
   Log::print(this->point.file(), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STATIC_STRING("\n[TRACE] TRACER: Free Stack "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(std::to_string(driver::device.availableStack()), LogLevel::TRACE, LogType::CONTINUITY);
+
   {
-    driver::HeapSelectDram guard;
-    Log::print(IOP_STATIC_STRING(", Free DRAM "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.availableHeap()), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(IOP_STATIC_STRING(", Biggest DRAM Block "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.biggestHeapBlock()), LogLevel::TRACE, LogType::CONTINUITY);
+    // Could this cause memory fragmentation?
+    auto memory = driver::device.availableMemory();
+    
+    Log::print(IOP_STATIC_STRING("\n[TRACE] TRACER: Free Stack "), LogLevel::TRACE, LogType::CONTINUITY);
+    Log::print(std::to_string(memory.availableStack), LogLevel::TRACE, LogType::CONTINUITY);
+
+    for (auto& item: memory.availableHeap) {
+      Log::print(IOP_STATIC_STRING(", Free "), LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(item.first, LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(std::to_string(item.second), LogLevel::TRACE, LogType::CONTINUITY);
+    }
+    for (auto& item: memory.biggestHeapBlock) {
+      Log::print(IOP_STATIC_STRING(", Biggest "), LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(item.first, LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(IOP_STATIC_STRING(" Block "), LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(std::to_string(item.second), LogLevel::TRACE, LogType::CONTINUITY);
+    }
   }
-  {
-    driver::HeapSelectIram guard;
-    Log::print(IOP_STATIC_STRING(", Free IRAM "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.availableHeap()), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(IOP_STATIC_STRING(", Biggest IRAM Block "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.biggestHeapBlock()), LogLevel::TRACE, LogType::CONTINUITY);
-  }
+
   Log::print(IOP_STATIC_STRING(", Connection "), LogLevel::TRACE, LogType::CONTINUITY);
   Log::print(std::to_string(iop::data.wifi.status() == driver::StationStatus::GOT_IP), LogLevel::TRACE, LogType::CONTINUITY);
   Log::print(IOP_STATIC_STRING("\n"), LogLevel::TRACE, LogType::END);
@@ -256,25 +261,29 @@ void logMemory(const Log &logger) noexcept {
   Log::flush();
   Log::print(IOP_STATIC_STRING("[INFO] "), logger.level(), LogType::START);
   Log::print(logger.target(), logger.level(), LogType::CONTINUITY);
-  Log::print(IOP_STATIC_STRING(": Free Stack "), logger.level(), LogType::CONTINUITY);
-  Log::print(std::to_string(driver::device.availableStack()), LogLevel::TRACE, LogType::CONTINUITY);
+
   {
-    driver::HeapSelectDram guard;
-    Log::print(IOP_STATIC_STRING(", Free DRAM "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.availableHeap()), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(IOP_STATIC_STRING(", Biggest DRAM Block "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.biggestHeapBlock()), LogLevel::TRACE, LogType::CONTINUITY);
+    // Could this cause memory fragmentation?
+    auto memory = driver::device.availableMemory();
+
+    Log::print(IOP_STATIC_STRING(": Free Stack "), logger.level(), LogType::CONTINUITY);
+    Log::print(std::to_string(memory.availableStack), logger.level(), LogType::CONTINUITY);
+
+    for (auto& item: memory.availableHeap) {
+      Log::print(IOP_STATIC_STRING(", Free "), logger.level(), LogType::CONTINUITY);
+      Log::print(item.first, logger.level(), LogType::CONTINUITY);
+      Log::print(std::to_string(item.second), logger.level(), LogType::CONTINUITY);
+    }
+    for (auto& item: memory.biggestHeapBlock) {
+      Log::print(IOP_STATIC_STRING(", Biggest "), logger.level(), LogType::CONTINUITY);
+      Log::print(item.first, logger.level(), LogType::CONTINUITY);
+      Log::print(IOP_STATIC_STRING(" Block "), logger.level(), LogType::CONTINUITY);
+      Log::print(std::to_string(item.second), logger.level(), LogType::CONTINUITY);
+    }
   }
-  {
-    driver::HeapSelectIram guard;
-    Log::print(IOP_STATIC_STRING(", Free IRAM "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.availableHeap()), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(IOP_STATIC_STRING(", Biggest IRAM Block "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(driver::device.biggestHeapBlock()), LogLevel::TRACE, LogType::CONTINUITY);
-  }
-  Log::print(IOP_STATIC_STRING(", Connection "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(std::to_string(iop::data.wifi.status() == driver::StationStatus::GOT_IP), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STATIC_STRING("\n"), LogLevel::TRACE, LogType::END);
+  Log::print(IOP_STATIC_STRING(", Connection "), logger.level(), LogType::CONTINUITY);
+  Log::print(std::to_string(iop::data.wifi.status() == driver::StationStatus::GOT_IP), logger.level(), LogType::CONTINUITY);
+  Log::print(IOP_STATIC_STRING("\n"), logger.level(), LogType::END);
   Log::flush();
 }
 } // namespace iop

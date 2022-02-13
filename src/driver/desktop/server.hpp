@@ -8,17 +8,20 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <optional>
+#include <errno.h>
+#include <thread>
+#include <chrono>
 
+#ifdef _WIN32
 // TODO: Make it multiplatform
 // Berkeley sockets, so assumes POSIX compliant OS //
+#else
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <thread>
-#include <chrono>
+#endif
 
 static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);

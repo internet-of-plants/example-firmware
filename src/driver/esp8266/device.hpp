@@ -6,17 +6,6 @@
 #include <umm_malloc/umm_heap_select.h>
 
 namespace driver {
-HeapSelectIram::HeapSelectIram() noexcept: ptr(new (std::nothrow) ::HeapSelectIram()) {
-  iop_assert(ptr, IOP_STATIC_STRING("Unable to allocate HeapSelectIram"));
-}
-HeapSelectIram::~HeapSelectIram() noexcept { delete this->ptr; }
-HeapSelectDram::HeapSelectDram() noexcept: ptr(new (std::nothrow) ::HeapSelectDram()) {
-  iop_assert(ptr, IOP_STATIC_STRING("Unable to allocate HeapSelectDram"));
-}
-HeapSelectDram::~HeapSelectDram() noexcept {
-  delete this->ptr;
-}
-
 void Device::syncNTP() const noexcept {
   // UTC by default, should we change according to the user? We currently only use this to validate SSL cert dates
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
@@ -27,19 +16,36 @@ auto Device::platform() const noexcept -> ::iop::StaticString {
 auto Device::vcc() const noexcept -> uint16_t {
     return ESP.getVcc();
 }
-auto Device::availableSpace() const noexcept -> uintmax_t {
+auto Device::availableStorage() const noexcept -> uintmax_t {
     return ESP.getFreeSketchSpace();
 }
-auto Device::availableStack() const noexcept -> uintmax_t {
-    //disable_extra4k_at_link_time();
-    ESP.resetFreeContStack();
-    return ESP.getFreeContStack();
-}
-auto Device::availableHeap() const noexcept -> uintmax_t {
-    return ESP.getFreeHeap();
-}
-auto Device::biggestHeapBlock() const noexcept -> uintmax_t {
-    return ESP.getMaxFreeBlockSize();
+
+auto Device::availableMemory() const noexcept -> Memory {
+  static std::map<std::string_view, uintmax_t> heap;
+  static std::map<std::string_view, uintmax_t> biggestBlock;
+
+  if (heap.size() == 0) {
+    {
+      HeapSelectDram _guard;
+      heap.insert({ std::string_view("DRAM"), ESP.getFreeHeap() });
+    }
+    {
+      HeapSelectIram _guard;
+      heap.insert({ std::string_view("IRAM"), ESP.getFreeHeap() });
+    }
+
+    {
+      HeapSelectDram _guard;
+      biggestBlock.insert({ std::string_view("DRAM"), ESP.getMaxFreeBlockSize() });
+    }
+    {
+      HeapSelectIram _guard;
+      biggestBlock.insert({ std::string_view("IRAM"), ESP.getMaxFreeBlockSize() });
+    }
+  }
+
+  ESP.resetFreeContStack();
+  return Memory(ESP.getFreeContStack(), heap, biggestBlock);
 }
 void Device::deepSleep(const size_t seconds) const noexcept {
     ESP.deepSleep(seconds * 1000000);

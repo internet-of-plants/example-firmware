@@ -46,7 +46,7 @@ auto base64Encode(const uint8_t *in, const size_t size) noexcept -> std::string 
 
   int val = 0, valb = -6;
   for (uint32_t index = 0; index < size; ++index) {
-    const char c = static_cast<const char>(in[index]);
+    const char c = static_cast<char>(in[index]);
     val = (val << 8) + c;
     valb += 8;
     while (valb >= 0) {

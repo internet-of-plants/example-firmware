@@ -6,7 +6,7 @@
 constexpr static iop::UpgradeHook defaultHook(iop::UpgradeHook::defaultHook);
 
 static iop::UpgradeHook hook(defaultHook);
-static driver::CertStore * maybeCertStore = nullptr;;
+static driver::CertStore * maybeCertStore = nullptr;
 
 namespace iop {
 auto Network::logger() const noexcept -> const Log & {
@@ -185,17 +185,19 @@ auto Network::httpRequest(const HttpMethod method_,
     str = iop::to_view(driver::device.macAddress());
     session.addHeader(IOP_STATIC_STRING("MAC_ADDRESS"), str);
   }
- 
-  session.addHeader(IOP_STATIC_STRING("FREE_STACK"), std::to_string(driver::device.availableStack()));
+   
   {
-    driver::HeapSelectDram guard;
-    session.addHeader(IOP_STATIC_STRING("FREE_DRAM"), std::to_string(driver::device.availableHeap()));
-    session.addHeader(IOP_STATIC_STRING("BIGGEST_DRAM_BLOCK"), std::to_string(driver::device.biggestHeapBlock()));
-  }
-  {
-    driver::HeapSelectIram guard;
-    session.addHeader(IOP_STATIC_STRING("FREE_IRAM"), std::to_string(driver::device.availableHeap()));
-    session.addHeader(IOP_STATIC_STRING("BIGGEST_IRAM_BLOCK"), std::to_string(driver::device.biggestHeapBlock()));
+    // Could this cause memory fragmentation?
+    auto memory = driver::device.availableMemory();
+    
+    session.addHeader(IOP_STATIC_STRING("FREE_STACK"), std::to_string(memory.availableStack));
+
+    for (auto& item: memory.availableHeap) {
+      session.addHeader(IOP_STATIC_STRING("FREE_").toString().append(item.first), std::to_string(item.second));
+    }
+    for (auto& item: memory.biggestHeapBlock) {
+      session.addHeader(IOP_STATIC_STRING("BIGGEST_BLOCK_").toString().append(item.first), std::to_string(item.second));
+    }
   }
   session.addHeader(IOP_STATIC_STRING("VCC"), std::to_string(driver::device.vcc()));
   session.addHeader(IOP_STATIC_STRING("TIME_RUNNING"), std::to_string(driver::thisThread.now()));

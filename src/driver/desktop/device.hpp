@@ -4,24 +4,30 @@
 #include <filesystem>
 #include <fstream>
 
+#include <iostream>
+
 namespace driver {
-HeapSelectIram::HeapSelectIram() noexcept {}
-HeapSelectIram::~HeapSelectIram() noexcept { (void)this->ptr; }
-HeapSelectDram::HeapSelectDram() noexcept {}
-HeapSelectDram::~HeapSelectDram() noexcept { (void)this->ptr; }
 void Device::syncNTP() const noexcept {}
-auto Device::platform() const noexcept -> iop::StaticString { return IOP_STATIC_STRING("DESKTOP"); }
 auto Device::vcc() const noexcept -> uint16_t { return 1; }
-auto Device::availableSpace() const noexcept -> uintmax_t {
+
+auto Device::platform() const noexcept -> iop::StaticString { return IOP_STATIC_STRING("DESKTOP"); }
+auto Device::availableStorage() const noexcept -> uintmax_t {
   // TODO: handle errors
   std::error_code code;
   auto available = std::filesystem::space(std::filesystem::current_path(), code).available;
   if (code) return 0;
   return available;
 }
-auto Device::availableStack() const noexcept -> uintmax_t { return 1; }
-auto Device::availableHeap() const noexcept -> uintmax_t { return 1; }
-auto Device::biggestHeapBlock() const noexcept -> uintmax_t { return 1; }
+auto Device::availableMemory() const noexcept -> Memory {
+  std::map<std::string_view, uintmax_t> heap;
+  heap.insert({ std::string_view("RAM"), static_cast<uintmax_t>(1) });
+
+  std::map<std::string_view, uintmax_t> biggestBlock;
+  biggestBlock.insert({ std::string_view("RAM"), static_cast<uintmax_t>(1) });
+
+  std::cout << &biggestBlock << std::endl;
+  return Memory(1, heap, biggestBlock);
+}
 void Device::deepSleep(size_t seconds) const noexcept {
   if (seconds == 0) seconds = SIZE_MAX;
   std::this_thread::sleep_for(std::chrono::seconds(seconds));

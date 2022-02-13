@@ -19,6 +19,7 @@ auto upgrade(const iop::Network &network, const iop::StaticString path, const st
 
         network.logger().info(IOP_STATIC_STRING("Upgrading binary file: "), std::string_view(filename.c_str()));
 
+        // TODO: writing to yourself doesn't work everywhere, we need a better way
         std::ofstream file(filename);
         if (!file.is_open()) {
             network.logger().error(IOP_STATIC_STRING("Unable to open firmware file"));
