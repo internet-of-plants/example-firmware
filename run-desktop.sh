@@ -1,1 +1,1 @@
-.pio/build/desktop/program
+.pio/build/posix/program

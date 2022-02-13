@@ -193,9 +193,9 @@ void CredentialsServer::start() noexcept {
     this->logger.info(IOP_STATIC_STRING("Setting our own wifi access point"));
 
     // TODO: how to mock it in a reasonable way?
-    iop::data.wifi.setMode(driver::WiFiMode::AP_STA);
+    iop::data.wifi.setMode(driver::WiFiMode::ACCESS_POINT_AND_STATION);
     driver::thisThread.sleep(1);
-    iop::data.wifi.setupAP();
+    iop::data.wifi.setupAccessPoint();
 
     {
       const auto hash = iop::hashString(iop::to_view(driver::device.macAddress()));
@@ -223,7 +223,7 @@ void CredentialsServer::close() noexcept {
     dnsServer.close();
     server.close();
 
-    iop::data.wifi.setMode(driver::WiFiMode::STA);
+    iop::data.wifi.setMode(driver::WiFiMode::STATION);
     driver::thisThread.sleep(1);
   }
 }

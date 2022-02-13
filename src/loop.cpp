@@ -298,9 +298,9 @@ void EventLoop::connect(std::string_view ssid,
 auto EventLoop::authenticate(std::string_view username, std::string_view password, const Api &api) const noexcept -> std::optional<AuthToken> {
   IOP_TRACE();
 
-  iop::data.wifi.setMode(driver::WiFiMode::STA);
+  iop::data.wifi.setMode(driver::WiFiMode::STATION);
   auto authToken = api.authenticate(username, std::move(password));
-  iop::data.wifi.setMode(driver::WiFiMode::AP_STA);
+  iop::data.wifi.setMode(driver::WiFiMode::ACCESS_POINT_AND_STATION);
 
   this->logger.info(IOP_STATIC_STRING("Tried to authenticate"));
   if (const auto *error = std::get_if<iop::NetworkStatus>(&authToken)) {

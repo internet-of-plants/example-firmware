@@ -1,4 +1,4 @@
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 #include "driver/noop/io.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/io.hpp"

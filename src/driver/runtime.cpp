@@ -1,4 +1,4 @@
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 #ifndef UNIT_TEST
 #include "driver/cpp17/runtime.hpp"
 #endif

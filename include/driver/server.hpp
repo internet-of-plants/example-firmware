@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <memory>
 
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 class sockaddr_in;
 #elif defined(IOP_ESP8266)
 class DNSServer;
@@ -19,7 +19,7 @@ namespace driver {
 class HttpConnection {
 // TODO: make variables private with setters/getters available to friend classes (make HttpServer a friend)
 public:
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
   std::optional<int32_t> currentClient;
   std::string currentHeaders;
   std::string currentPayload;
@@ -56,7 +56,7 @@ class HttpServer {
   bool isHandlingRequest = false;
 public:
   using Callback = std::function<void(HttpConnection&, iop::Log const &)>;
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 private:
   std::unordered_map<std::string, Callback> router;
   Callback notFoundHandler;

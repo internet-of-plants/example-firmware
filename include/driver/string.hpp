@@ -28,7 +28,7 @@ class __FlashStringHelper;
 #define IOP_INTERNAL_STORAGE_RAW_N(s,n) (__extension__({static const char __pstr__[] __attribute__((__aligned__(n))) __attribute__((section( "\".irom0.pstr." __FILE__ "." INTERNAL_IOP__STRINGIZE(__LINE__) "."  INTERNAL_IOP__STRINGIZE(__COUNTER__) "\", \"aSM\", @progbits, 1 #"))) = (s); &__pstr__[0];}))
 #define IOP_STORAGE_RAW(s) IOP_INTERNAL_STORAGE_RAW_N(s, 4)
 
-#elif (defined(IOP_NOOP) && !defined(ESP8266)) || defined(IOP_ESP32) || defined(IOP_DESKTOP)
+#elif (defined(IOP_NOOP) && !defined(ESP8266)) || defined(IOP_ESP32) || defined(IOP_POSIX)
 #define IOP_RAM
 #define IOP_ROM
 #define IOP_STORAGE_RAW(x) x

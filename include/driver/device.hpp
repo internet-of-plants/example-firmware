@@ -6,9 +6,6 @@
 #include <array>
 #include <map>
 
-class HeapSelectIram;
-class HeapSelectDram;
-
 namespace driver {
 struct Memory {
   uintmax_t availableStack;

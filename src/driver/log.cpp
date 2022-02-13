@@ -1,6 +1,6 @@
 #ifndef IOP_SERIAL
 #include "driver/noop/log.hpp"
-#elif defined(IOP_DESKTOP)
+#elif defined(IOP_POSIX)
 #include "driver/cpp17/log.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/log.hpp"
@@ -225,6 +225,7 @@ Tracer::Tracer(CodePoint point) noexcept : point(std::move(point)) {
     for (auto& item: memory.availableHeap) {
       Log::print(IOP_STATIC_STRING(", Free "), LogLevel::TRACE, LogType::CONTINUITY);
       Log::print(item.first, LogLevel::TRACE, LogType::CONTINUITY);
+      Log::print(IOP_STATIC_STRING(" "), LogLevel::TRACE, LogType::CONTINUITY);
       Log::print(std::to_string(item.second), LogLevel::TRACE, LogType::CONTINUITY);
     }
     for (auto& item: memory.biggestHeapBlock) {
@@ -272,6 +273,7 @@ void logMemory(const Log &logger) noexcept {
     for (auto& item: memory.availableHeap) {
       Log::print(IOP_STATIC_STRING(", Free "), logger.level(), LogType::CONTINUITY);
       Log::print(item.first, logger.level(), LogType::CONTINUITY);
+      Log::print(IOP_STATIC_STRING(" "), LogLevel::TRACE, LogType::CONTINUITY);
       Log::print(std::to_string(item.second), logger.level(), LogType::CONTINUITY);
     }
     for (auto& item: memory.biggestHeapBlock) {

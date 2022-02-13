@@ -13,20 +13,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef _WIN32
-  /* See http://stackoverflow.com/questions/12765743/getaddrinfo-on-win32 */
-  #ifndef _WIN32_WINNT
-    #define _WIN32_WINNT 0x0501  /* Windows XP. */
-  #endif
-  #include <winsock2.h>
-  #include <Ws2tcpip.h>
-#else
-  /* Assume that any non-Windows platform uses POSIX-style sockets instead. */
-  #include <sys/socket.h>
-  #include <arpa/inet.h>
-  //#include <netdb.h>  /* Needed for getaddrinfo() and freeaddrinfo() */
-  #include <unistd.h> /* Needed for close() */
-#endif
+// POSIX
+/* Assume that any non-Windows platform uses POSIX-style sockets instead. */
+#include <sys/socket.h>
+#include <arpa/inet.h>
+//#include <netdb.h>  /* Needed for getaddrinfo() and freeaddrinfo() */
+#include <unistd.h> /* Needed for close() */
 
 static iop::Log clientDriverLogger(iop::LogLevel::DEBUG, IOP_STATIC_STRING("HTTP Client"));
 
@@ -90,30 +82,18 @@ std::string Response::header(iop::StaticString key) const noexcept {
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept  {
   auto keyLower = key.toString();
-  // Headers can't be UTF8 so we cool
-  std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
-      [](unsigned char c){ return std::tolower(c); });
   this->headers.emplace(keyLower, value.toString());
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept  {
   auto keyLower = key.toString();
-  // Headers can't be UTF8 so we cool
-  std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
-      [](unsigned char c){ return std::tolower(c); });
   this->headers.emplace(keyLower, std::string(value));
 }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept  {
   std::string keyLower(key);
-  // Headers can't be UTF8 so we cool
-  std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
-      [](unsigned char c){ return std::tolower(c); });
   this->headers.emplace(keyLower, value.toString());
 }
 void Session::addHeader(std::string_view key, std::string_view value) noexcept  {
   std::string keyLower(key);
-  // Headers can't be UTF8 so we cool
-  std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(),
-      [](unsigned char c){ return std::tolower(c); });
   this->headers.emplace(keyLower, std::string(value));
 }
 void Session::setAuthorization(std::string auth) noexcept  {
@@ -131,7 +111,7 @@ auto Session::sendRequest(const std::string method, const uint8_t *data, const s
   auto status = std::make_optional(1000);
   const auto fd = *this->fd_;
 
-  //responseHeaders.reserve(this->http->get().headersToCollect_.size());
+  responseHeaders.reserve(this->http->get().headersToCollect_.size());
 
   {
     const std::string_view path(this->uri_.begin() + this->uri_.find("/", this->uri_.find("://") + 3));

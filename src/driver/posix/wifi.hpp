@@ -37,12 +37,13 @@ bool Wifi::begin(std::string_view ssid, std::string_view psk) const noexcept {
     return true;
 }
 WiFiMode Wifi::mode() const noexcept {
-    return WiFiMode::AP_STA;
+    return WiFiMode::STATION;
 }
 void Wifi::wake() const noexcept {}
-void Wifi::setupAP() const noexcept {}
 void Wifi::reconnect() const noexcept {}
 void Wifi::setup(driver::CertStore *certStore) noexcept { (void)certStore; }
 void Wifi::setMode(WiFiMode mode) const noexcept { (void) mode; }
-void Wifi::onStationModeGotIP(std::function<void()> f) noexcept { (void) f; }
+void Wifi::onStationGotIP(std::function<void()> f) noexcept { (void) f; }
+
+void Wifi::setupAccessPoint() const noexcept {} // NOOP
 }

@@ -125,7 +125,7 @@ static void halt(const std::string_view &msg,
 
     // Let's allow the wifi to reconnect
     iop::data.wifi.wake();
-    iop::data.wifi.setMode(driver::WiFiMode::STA);
+    iop::data.wifi.setMode(driver::WiFiMode::STATION);
     iop::data.wifi.reconnect();
   }
 

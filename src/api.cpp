@@ -53,7 +53,7 @@ auto Api::setup() const noexcept -> void {
   IOP_TRACE();
 #ifdef IOP_ONLINE
 
-  iop::data.wifi.onStationModeGotIP(wifiCredentialsCallback);
+  iop::data.wifi.onStationGotIP(wifiCredentialsCallback);
   // Initialize the wifi configurations
 
   if (iop::Network::isConnected())

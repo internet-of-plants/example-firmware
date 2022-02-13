@@ -12,16 +12,12 @@
 #include <thread>
 #include <chrono>
 
-#ifdef _WIN32
-// TODO: Make it multiplatform
-// Berkeley sockets, so assumes POSIX compliant OS //
-#else
+// POSIX
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <fcntl.h>
-#endif
 
 static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);

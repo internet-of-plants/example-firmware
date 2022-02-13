@@ -7,10 +7,10 @@ auto Device::vcc() const noexcept -> uint16_t { return UINT16_MAX; }
 auto Device::availableStorage() const noexcept -> uintmax_t { return 1000000; }
 auto Device::availableMemory() const noexcept -> Memory {
     std::map<std::string_view, uintmax_t> heap;
-    heap.insert({ std::string_view("RAM"), 20000 });
+    heap.insert({ std::string_view("DRAM"), 20000 });
 
     std::map<std::string_view, uintmax_t> biggestBlock;
-    biggestBlock.insert({ std::string_view("RAM"), 20000 });
+    biggestBlock.insert({ std::string_view("DRAM"), 20000 });
 
     return Memory {
         .availableStack = 2000,

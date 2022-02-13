@@ -12,8 +12,8 @@ Wifi::~Wifi() noexcept {
     delete this->client;
 }
 
-void Wifi::onStationModeGotIP(std::function<void()> f) noexcept {
-  ::WiFi.onStationModeGotIP([f](const ::WiFiEventStationModeGotIP &ev) {
+void Wifi::onStationGotIP(std::function<void()> f) noexcept {
+  ::WiFi.onStationGotIP([f](const ::WiFiEventStationModeGotIP &ev) {
       (void) ev;
       f();
   });
@@ -50,7 +50,7 @@ StationStatus Wifi::status() const noexcept {
     iop_panic(IOP_STATIC_STRING("Unreachable status: ").toString() + std::to_string(static_cast<uint8_t>(s)));
 }
 
-void Wifi::setupAP() const noexcept {
+void Wifi::setupAccessPoint() const noexcept {
     // NOLINTNEXTLINE *-avoid-magic-numbers
     const auto staticIp = IPAddress(192, 168, 1, 1);
     // NOLINTNEXTLINE *-avoid-magic-numbers
@@ -67,13 +67,13 @@ void Wifi::setMode(WiFiMode mode) const noexcept {
         case WiFiMode::OFF:
             ::WiFi.mode(WIFI_OFF);
             return;
-        case WiFiMode::STA:
+        case WiFiMode::STATION:
             ::WiFi.mode(WIFI_STA);
             return;
-        case WiFiMode::AP:
+        case WiFiMode::ACCESS_POINT:
             ::WiFi.mode(WIFI_AP);
             return;
-        case WiFiMode::AP_STA:
+        case WiFiMode::ACCESS_POINT_AND_STATION:
             ::WiFi.mode(WIFI_AP_STA);
             return;
     }
@@ -136,11 +136,11 @@ WiFiMode Wifi::mode() const noexcept {
         case WIFI_OFF:
             return WiFiMode::OFF;
         case WIFI_STA:
-            return WiFiMode::STA;
+            return WiFiMode::STATION;
         case WIFI_AP:
-            return WiFiMode::AP;
+            return WiFiMode::ACCESS_POINT;
         case WIFI_AP_STA:
-            return WiFiMode::AP_STA;
+            return WiFiMode::ACCESS_POINT_AND_STATION;
     }
     iop_panic(IOP_STATIC_STRING("Unreachable"));
 }

@@ -1,5 +1,5 @@
-#ifdef IOP_DESKTOP
-#include "driver/desktop/string.hpp"
+#ifdef IOP_POSIX
+#include "driver/cpp17/string.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/string.hpp"
 #elif defined(IOP_NOOP)

@@ -58,7 +58,7 @@ class HTTPClient;
 
 // References HTTPClient, should never outlive it
 class Session {
-  #ifdef IOP_DESKTOP
+  #ifdef IOP_POSIX
   std::shared_ptr<int> fd_;
   #endif
 
@@ -68,7 +68,7 @@ class Session {
   std::string_view uri_;
   #endif
 
-  #ifdef IOP_DESKTOP
+  #ifdef IOP_POSIX
   Session(HTTPClient &http, std::string_view uri, std::shared_ptr<int> fd) noexcept;
   #elif defined(IOP_ESP8266)
   Session(HTTPClient &http, std::string_view uri) noexcept;
@@ -91,7 +91,7 @@ public:
 };
 
 class HTTPClient {
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
   std::vector<std::string> headersToCollect_;
 #elif defined(IOP_ESP8266)
   ::HTTPClient * http;
@@ -111,7 +111,7 @@ public:
 };
 }
 
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 #ifdef IOP_SSL
 #error "SSL not supported for desktop right now"
 #endif

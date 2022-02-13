@@ -1,4 +1,4 @@
-#ifdef IOP_DESKTOP
+#ifdef IOP_POSIX
 #include "driver/cert_store.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/cert_store.hpp"

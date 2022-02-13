@@ -18,7 +18,7 @@ namespace driver { using NetworkClientPtr = WiFiClient *; }
 
 namespace driver {
 enum class WiFiMode {
-  OFF = 0, STA, AP, AP_STA
+  OFF = 0, STATION, ACCESS_POINT, ACCESS_POINT_AND_STATION
 };
 
 enum class StationStatus {
@@ -45,13 +45,13 @@ struct Wifi {
   void wake() const noexcept;
   std::pair<std::array<char, 32>, std::array<char, 64>> credentials() const noexcept;
   bool begin(std::string_view ssid, std::string_view psk) const noexcept;
-  void setupAP() const noexcept;
+  void setupAccessPoint() const noexcept;
   void connectAP(std::string_view ssid, std::string_view psk) const noexcept;
   std::string APIP() const noexcept;
   void reconnect() const noexcept;
   void setup(driver::CertStore *certStore) noexcept;
 
-  void onStationModeGotIP(std::function<void()> f) noexcept;
+  void onStationGotIP(std::function<void()> f) noexcept;
 
   Wifi() noexcept;
   ~Wifi() noexcept;

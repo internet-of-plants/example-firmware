@@ -269,7 +269,7 @@ void Network::setup() const noexcept {
 
   iop::data.wifi.setup(maybeCertStore);
   iop::Network::disconnect();
-  iop::data.wifi.setMode(driver::WiFiMode::STA);
+  iop::data.wifi.setMode(driver::WiFiMode::STATION);
 
   driver::thisThread.sleep(1);
 }
