@@ -27,8 +27,8 @@ void IOP_RAM buttonChanged() noexcept {
 namespace reset {
 void setup() noexcept {
   IOP_TRACE();
-  driver::gpio.mode(config::factoryResetButton, driver::io::Mode::INPUT);
-  driver::gpio.alarm(config::factoryResetButton, driver::io::Alarm::CHANGE, buttonChanged);
+  driver::gpio.setMode(config::factoryResetButton, driver::io::Mode::INPUT);
+  driver::gpio.setInterrupt(config::factoryResetButton, driver::io::InterruptState::CHANGE, buttonChanged);
 }
 } // namespace reset
 #else

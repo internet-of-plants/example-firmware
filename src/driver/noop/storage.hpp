@@ -2,14 +2,18 @@
 #include "driver/panic.hpp"
 
 namespace driver {
-void Storage::setup(size_t size) noexcept {
-    this->size = size;
-    if (!buffer) {
-        buffer = new (std::nothrow) uint8_t[size];
-        memset(buffer, 0, size);
+auto Storage::setup(const uintmax_t size) noexcept -> bool {
+    iop_assert(size > 0, IOP_STATIC_STR("Storage size is zero"));
+    
+    if (!this->buffer) {
+        this->size = size;
+        this->buffer = new (std::nothrow) uint8_t[size];
+        if (!this->buffer) return false;
+        std::memset(buffer, 0, size);
     }
+    return true;
 }
-void Storage::commit() noexcept {}
-uint8_t const * Storage::asRef() const noexcept { if (!buffer) iop_panic(IOP_STATIC_STRING("Buffer is nullptr")); return buffer; }
-uint8_t * Storage::asMut() noexcept { if (!buffer) iop_panic(IOP_STATIC_STRING("Buffer is nullptr")); return buffer; }
+auto Storage::commit() noexcept -> bool { return true; }
+auto Storage::asRef() const noexcept -> uint8_t const * { if (!buffer) iop_panic(IOP_STATIC_STR("Buffer is nullptr")); return buffer; }
+auto Storage::asMut() noexcept -> uint8_t * { if (!buffer) iop_panic(IOP_STATIC_STR("Buffer is nullptr")); return buffer; }
 }

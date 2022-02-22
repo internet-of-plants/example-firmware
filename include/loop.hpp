@@ -54,7 +54,7 @@ public:
   explicit EventLoop(iop::StaticString uri, iop::LogLevel logLevel_) noexcept
       : credentialsServer(logLevel_),
         api_(std::move(uri), logLevel_),
-        logger(logLevel_, IOP_STATIC_STRING("LOOP")), storage_(logLevel_),
+        logger(logLevel_, IOP_STATIC_STR("LOOP")), storage_(logLevel_),
         sensors(config::soilResistivityPower, config::soilTemperature, config::airTempAndHumidity, config::dhtVersion),
         nextMeasurement(0), nextYieldLog(0), nextNTPSync(0), nextHandleConnectionLost(0),
         nextTryStorageWifiCredentials(0), nextTryHardcodedWifiCredentials(0), nextTryHardcodedIopCredentials(0) {
@@ -81,7 +81,7 @@ class GlobalData {
 
 public:
   GlobalData() noexcept: data(new (std::nothrow) StackStruct()) {
-    iop_assert(data, IOP_STATIC_STRING("Unable to allocate buffer"));
+    iop_assert(data, IOP_STATIC_STR("Unable to allocate buffer"));
     memset((void*)data, 0, sizeof(StackStruct));
   }
   void reset() noexcept {

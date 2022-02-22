@@ -20,7 +20,7 @@
 
 void Sensors::setup() noexcept {
   IOP_TRACE();
-  driver::gpio.mode(this->soilResistivityPower, driver::io::Mode::OUTPUT);
+  driver::gpio.setMode(this->soilResistivityPower, driver::io::Mode::OUTPUT);
   this->airTempAndHumiditySensor->begin();
   this->soilTemperatureSensor->begin();
 }
@@ -142,10 +142,10 @@ Sensors::Sensors(const driver::io::Pin soilResistivityPower,
         soilTemperatureOneWireBus(new (std::nothrow) OneWire(static_cast<uint8_t>(soilTemperature))),
         soilTemperatureSensor(nullptr),
         airTempAndHumiditySensor(new (std::nothrow) DHT(static_cast<uint8_t>(dht), dhtVersion)) {
-    iop_assert(this->airTempAndHumiditySensor, IOP_STATIC_STRING("Unable to allocate air temp and humidity sensor"));
-    iop_assert(this->soilTemperatureOneWireBus, IOP_STATIC_STRING("Unable to allocate one wire bus"));
+    iop_assert(this->airTempAndHumiditySensor, IOP_STATIC_STR("Unable to allocate air temp and humidity sensor"));
+    iop_assert(this->soilTemperatureOneWireBus, IOP_STATIC_STR("Unable to allocate one wire bus"));
     this->soilTemperatureSensor = new (std::nothrow) DallasTemperature(this->soilTemperatureOneWireBus);
-    iop_assert(this->soilTemperatureSensor, IOP_STATIC_STRING("Unable to allocate soil temperature sensor"));
+    iop_assert(this->soilTemperatureSensor, IOP_STATIC_STR("Unable to allocate soil temperature sensor"));
 }
 #else
 {

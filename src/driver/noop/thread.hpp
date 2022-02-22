@@ -1,8 +1,9 @@
 #include "driver/thread.hpp"
 
 namespace driver {
-void Thread::sleep(uint64_t ms) const noexcept { (void) ms; }
-void Thread::yield() const noexcept {}
-void Thread::panic_() const noexcept { while (true) {} }
+auto Thread::sleep(uint64_t ms) const noexcept -> void { (void) ms; }
+auto Thread::yield() const noexcept -> void {}
+auto Thread::abort() const noexcept -> void { while (true) {} }
+auto Thread::halt() const noexcept -> void { this->abort() }
 auto Thread::now() const noexcept -> iop::time { return 0; }
 }

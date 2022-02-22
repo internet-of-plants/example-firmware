@@ -7,16 +7,16 @@ EventLoop eventLoop(config::uri(), config::logLevel);
 void EventLoop::setup() noexcept {
   IOP_TRACE();
 
-  this->logger.info(IOP_STATIC_STRING("Start Setup"));
-  driver::gpio.mode(driver::io::LED_BUILTIN, driver::io::Mode::OUTPUT);
+  this->logger.info(IOP_STATIC_STR("Start Setup"));
+  driver::gpio.setMode(driver::io::LED_BUILTIN, driver::io::Mode::OUTPUT);
 
   Storage::setup();
   reset::setup();
   this->sensors.setup();
   this->api().setup();
   this->credentialsServer.setup();
-  this->logger.info(IOP_STATIC_STRING("Setup finished"));
-  this->logger.info(IOP_STATIC_STRING("MD5: "), iop::to_view(driver::device.firmwareMD5()));
+  this->logger.info(IOP_STATIC_STR("Setup finished"));
+  this->logger.info(IOP_STATIC_STR("MD5: "), iop::to_view(driver::device.firmwareMD5()));
 }
 
 constexpr static uint64_t intervalTryStorageWifiCredentialsMillis =
@@ -29,7 +29,7 @@ constexpr static uint64_t intervalTryHardcodedIopCredentialsMillis =
     60 * 60 * 1000; // 1 hour
 
 void EventLoop::loop() noexcept {
-    this->logger.trace(IOP_STATIC_STRING("\n\n\n\n\n\n"));
+    this->logger.trace(IOP_STATIC_STR("\n\n\n\n\n\n"));
     IOP_TRACE();
 #ifdef LOG_MEMORY
     iop::logMemory(this->logger);
@@ -54,10 +54,10 @@ void EventLoop::loop() noexcept {
 
     if (isConnected && this->nextNTPSync < now) {
       constexpr const uint32_t sixHours = 6 * 60 * 60 * 1000;
-      this->logger.info(IOP_STATIC_STRING("Syncing NTP"));
+      this->logger.info(IOP_STATIC_STR("Syncing NTP"));
       driver::device.syncNTP();
       this->nextNTPSync = now + sixHours;
-      this->logger.info(IOP_STATIC_STRING("Time synced"));
+      this->logger.info(IOP_STATIC_STR("Time synced"));
 
     } else if (isConnected && !authToken) {
         this->handleIopCredentials();
@@ -68,7 +68,7 @@ void EventLoop::loop() noexcept {
     } else if (this->nextMeasurement <= now) {
       this->nextHandleConnectionLost = 0;
       this->nextMeasurement = now + config::interval;
-      iop_assert(authToken, IOP_STATIC_STRING("Auth Token not found"));
+      iop_assert(authToken, IOP_STATIC_STR("Auth Token not found"));
       this->handleMeasurements(*authToken);
       //this->logger.info(std::to_string(ESP.getVcc())); // TODO: remove this
         
@@ -76,7 +76,7 @@ void EventLoop::loop() noexcept {
       this->nextHandleConnectionLost = 0;
       constexpr const uint16_t tenSeconds = 10000;
       this->nextYieldLog = now + tenSeconds;
-      this->logger.trace(IOP_STATIC_STRING("Waiting"));
+      this->logger.trace(IOP_STATIC_STR("Waiting"));
 
     } else {
       this->nextHandleConnectionLost = 0;
@@ -103,8 +103,8 @@ void EventLoop::handleNotConnected() noexcept {
     const auto &stored = wifi->get();
     const auto ssid = std::string_view(stored.ssid.get().data(), stored.ssid.get().max_size());
     const auto psk = std::string_view(stored.password.get().data(), stored.password.get().max_size());
-    this->logger.info(IOP_STATIC_STRING("Trying wifi credentials stored in storage: "), iop::to_view(iop::scapeNonPrintable(ssid)));
-    this->logger.debug(IOP_STATIC_STRING("Password:"), iop::to_view(iop::scapeNonPrintable(psk)));
+    this->logger.info(IOP_STATIC_STR("Trying wifi credentials stored in storage: "), iop::to_view(iop::scapeNonPrintable(ssid)));
+    this->logger.debug(IOP_STATIC_STR("Password:"), iop::to_view(iop::scapeNonPrintable(psk)));
     this->connect(ssid, psk);
 
     // WiFi Credentials hardcoded at "configuration.hpp"
@@ -118,7 +118,7 @@ void EventLoop::handleNotConnected() noexcept {
   } else if (!isConnected && config::wifiNetworkName() && config::wifiPassword() && this->nextTryHardcodedWifiCredentials <= now) { 
     this->nextTryHardcodedWifiCredentials = now + intervalTryHardcodedWifiCredentialsMillis;
 
-    this->logger.info(IOP_STATIC_STRING("Trying hardcoded wifi credentials"));
+    this->logger.info(IOP_STATIC_STR("Trying hardcoded wifi credentials"));
 
     const auto ssid = *config::wifiNetworkName();
     const auto psk = *config::wifiPassword();
@@ -128,7 +128,7 @@ void EventLoop::handleNotConnected() noexcept {
 
 
   } else if (this->nextHandleConnectionLost < now) {
-    this->logger.debug(IOP_STATIC_STRING("Has creds, but no signal, opening server"));
+    this->logger.debug(IOP_STATIC_STR("Has creds, but no signal, opening server"));
     this->nextHandleConnectionLost = now + oneMinute;
     this->handleCredentials();
 
@@ -145,7 +145,7 @@ void EventLoop::handleIopCredentials() noexcept {
   if (config::iopEmail() && config::iopPassword() && this->nextTryHardcodedIopCredentials <= now) {
     this->nextTryHardcodedIopCredentials = now + intervalTryHardcodedIopCredentialsMillis;
 
-    this->logger.info(IOP_STATIC_STRING("Trying hardcoded iop credentials"));
+    this->logger.info(IOP_STATIC_STR("Trying hardcoded iop credentials"));
 
     const auto email = *config::iopEmail();
     const auto password = *config::iopPassword();
@@ -170,7 +170,7 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
       break;
     case InterruptEvent::FACTORY_RESET:
 #ifdef IOP_FACTORY_RESET
-      this->logger.warn(IOP_STATIC_STRING("Factory Reset: deleting stored credentials"));
+      this->logger.warn(IOP_STATIC_STR("Factory Reset: deleting stored credentials"));
       this->storage().removeWifi();
       this->storage().removeToken();
       iop::Network::disconnect();
@@ -184,11 +184,11 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
         const auto status = this->api().upgrade(token);
         switch (status) {
         case iop::NetworkStatus::FORBIDDEN:
-          this->logger.warn(IOP_STATIC_STRING("Invalid auth token, but keeping since at OTA"));
+          this->logger.warn(IOP_STATIC_STR("Invalid auth token, but keeping since at OTA"));
           return;
 
         case iop::NetworkStatus::BROKEN_CLIENT:
-          iop_panic(IOP_STATIC_STRING("Api::upgrade internal buffer overflow"));
+          iop_panic(IOP_STATIC_STR("Api::upgrade internal buffer overflow"));
 
         // Already logged at the network level
         case iop::NetworkStatus::IO_ERROR:
@@ -200,10 +200,10 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
         }
 
         const auto str = iop::Network::apiStatusToString(status);
-        this->logger.error(IOP_STATIC_STRING("Bad status, EventLoop::handleInterrupt "), str);
+        this->logger.error(IOP_STATIC_STR("Bad status, EventLoop::handleInterrupt "), str);
       } else {
         this->logger.error(
-            IOP_STATIC_STRING("Upgrade was expected, but no auth token was available"));
+            IOP_STATIC_STR("Upgrade was expected, but no auth token was available"));
       }
 #endif
       (void)1; // Satisfies linter
@@ -212,14 +212,14 @@ void EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
 #ifdef IOP_ONLINE
       const auto ip = iop::data.wifi.localIP();
       const auto status = this->statusToString(iop::data.wifi.status());
-      this->logger.debug(IOP_STATIC_STRING("WiFi connected ("), iop::to_view(ip), IOP_STATIC_STRING("): "), status.value_or(IOP_STATIC_STRING("BadData")));
+      this->logger.debug(IOP_STATIC_STR("WiFi connected ("), iop::to_view(ip), IOP_STATIC_STR("): "), status.value_or(IOP_STATIC_STR("BadData")));
 
       const auto config = iop::data.wifi.credentials();
       // We treat wifi credentials as a blob instead of worrying about encoding
 
       globalData.ssid().fill('\0');
       memcpy(globalData.ssid().data(), config.first.begin(), sizeof(config.first));
-      this->logger.info(IOP_STATIC_STRING("Connected to network: "), iop::to_view(iop::scapeNonPrintable(std::string_view(globalData.ssid().data(), 32))));
+      this->logger.info(IOP_STATIC_STR("Connected to network: "), iop::to_view(iop::scapeNonPrintable(std::string_view(globalData.ssid().data(), 32))));
 
       globalData.psk().fill('\0');
       memcpy(globalData.psk().data(), config.second.begin(), sizeof(config.second));
@@ -242,21 +242,21 @@ void EventLoop::handleCredentials() noexcept {
 void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
     IOP_TRACE();
 
-    this->logger.debug(IOP_STATIC_STRING("Handle Measurements"));
+    this->logger.debug(IOP_STATIC_STR("Handle Measurements"));
 
     const auto measurements = sensors.measure();
     const auto status = this->api().registerEvent(token, measurements);
 
     switch (status) {
     case iop::NetworkStatus::FORBIDDEN:
-      this->logger.error(IOP_STATIC_STRING("Unable to send measurements"));
-      this->logger.warn(IOP_STATIC_STRING("Auth token was refused, deleting it"));
+      this->logger.error(IOP_STATIC_STR("Unable to send measurements"));
+      this->logger.warn(IOP_STATIC_STR("Auth token was refused, deleting it"));
       this->storage().removeToken();
       return;
 
     case iop::NetworkStatus::BROKEN_CLIENT:
-      this->logger.error(IOP_STATIC_STRING("Unable to send measurements"));
-      iop_panic(IOP_STATIC_STRING("Api::registerEvent internal buffer overflow"));
+      this->logger.error(IOP_STATIC_STR("Unable to send measurements"));
+      iop_panic(IOP_STATIC_STR("Api::registerEvent internal buffer overflow"));
 
     // Already logged at the Network level
     case iop::NetworkStatus::BROKEN_SERVER:
@@ -267,7 +267,7 @@ void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
       return;
     }
 
-    this->logger.error(IOP_STATIC_STRING("Unexpected status, EventLoop::handleMeasurements: "),
+    this->logger.error(IOP_STATIC_STR("Unexpected status, EventLoop::handleMeasurements: "),
                        iop::Network::apiStatusToString(status));
 }
 
@@ -275,13 +275,13 @@ void EventLoop::handleMeasurements(const AuthToken &token) noexcept {
 void EventLoop::connect(std::string_view ssid,
                                 std::string_view password) const noexcept {
   IOP_TRACE();
-  this->logger.info(IOP_STATIC_STRING("Connect: "), ssid);
+  this->logger.info(IOP_STATIC_STR("Connect: "), ssid);
   if (iop::data.wifi.status() == driver::StationStatus::CONNECTING) {
     iop::data.wifi.stationDisconnect();
   }
 
   if (!iop::data.wifi.begin(ssid, password)) {
-    this->logger.error(IOP_STATIC_STRING("Wifi authentication timed out"));
+    this->logger.error(IOP_STATIC_STR("Wifi authentication timed out"));
     return;
   }
 
@@ -291,7 +291,7 @@ void EventLoop::connect(std::string_view ssid,
     if (!statusStr)
       return; // It already will be logged by statusToString;
 
-    this->logger.error(IOP_STATIC_STRING("Invalid wifi credentials ("), *statusStr, IOP_STATIC_STRING("): "), std::move(ssid));
+    this->logger.error(IOP_STATIC_STR("Invalid wifi credentials ("), *statusStr, IOP_STATIC_STR("): "), std::move(ssid));
   }
 }
 
@@ -302,17 +302,17 @@ auto EventLoop::authenticate(std::string_view username, std::string_view passwor
   auto authToken = api.authenticate(username, std::move(password));
   iop::data.wifi.setMode(driver::WiFiMode::ACCESS_POINT_AND_STATION);
 
-  this->logger.info(IOP_STATIC_STRING("Tried to authenticate"));
+  this->logger.info(IOP_STATIC_STR("Tried to authenticate"));
   if (const auto *error = std::get_if<iop::NetworkStatus>(&authToken)) {
     const auto &status = *error;
 
     switch (status) {
     case iop::NetworkStatus::FORBIDDEN:
-      this->logger.error(IOP_STATIC_STRING("Invalid IoP credentials ("), iop::Network::apiStatusToString(status), IOP_STATIC_STRING("): "), username);
+      this->logger.error(IOP_STATIC_STR("Invalid IoP credentials ("), iop::Network::apiStatusToString(status), IOP_STATIC_STR("): "), username);
       return std::nullopt;
 
     case iop::NetworkStatus::BROKEN_CLIENT:
-      iop_panic(IOP_STATIC_STRING("CredentialsServer::authenticate internal buffer overflow"));
+      iop_panic(IOP_STATIC_STR("CredentialsServer::authenticate internal buffer overflow"));
 
     // Already logged at the Network level
     case iop::NetworkStatus::IO_ERROR:
@@ -322,18 +322,18 @@ auto EventLoop::authenticate(std::string_view username, std::string_view passwor
 
     case iop::NetworkStatus::OK:
       // On success an AuthToken is returned, not OK
-      iop_panic(IOP_STATIC_STRING("Unreachable"));
+      iop_panic(IOP_STATIC_STR("Unreachable"));
     }
 
     const auto str = iop::Network::apiStatusToString(status);
-    this->logger.crit(IOP_STATIC_STRING("CredentialsServer::authenticate bad status: "), str);
+    this->logger.crit(IOP_STATIC_STR("CredentialsServer::authenticate bad status: "), str);
     return std::nullopt;
 
   } else if (auto *token = std::get_if<AuthToken>(&authToken)) {
     return *token;
   }
 
-  iop_panic(IOP_STATIC_STRING("Invalid variant"));
+  iop_panic(IOP_STATIC_STR("Invalid variant"));
 }
 
 auto EventLoop::statusToString(const driver::StationStatus status) const noexcept -> std::optional<iop::StaticString> {
@@ -341,24 +341,24 @@ auto EventLoop::statusToString(const driver::StationStatus status) const noexcep
 
   switch (status) {
   case driver::StationStatus::IDLE:
-    return IOP_STATIC_STRING("STATION_IDLE");
+    return IOP_STATIC_STR("STATION_IDLE");
 
   case driver::StationStatus::CONNECTING:
-    return IOP_STATIC_STRING("STATION_CONNECTING");
+    return IOP_STATIC_STR("STATION_CONNECTING");
 
   case driver::StationStatus::WRONG_PASSWORD:
-    return IOP_STATIC_STRING("STATION_WRONG_PASSWORD");
+    return IOP_STATIC_STR("STATION_WRONG_PASSWORD");
 
   case driver::StationStatus::NO_AP_FOUND:
-    return IOP_STATIC_STRING("STATION_NO_AP_FOUND");
+    return IOP_STATIC_STR("STATION_NO_AP_FOUND");
 
   case driver::StationStatus::CONNECT_FAIL:
-    return IOP_STATIC_STRING("STATION_CONNECT_FAIL");
+    return IOP_STATIC_STR("STATION_CONNECT_FAIL");
 
   case driver::StationStatus::  GOT_IP:
-    return IOP_STATIC_STRING("STATION_GOT_IP");
+    return IOP_STATIC_STR("STATION_GOT_IP");
   }
 
-  this->logger.error(IOP_STATIC_STRING("Unknown status: ").toString() + std::to_string(static_cast<uint8_t>(status)));
+  this->logger.error(IOP_STATIC_STR("Unknown status: ").toString() + std::to_string(static_cast<uint8_t>(status)));
   return std::nullopt;
 }

@@ -13,7 +13,8 @@ public:
   auto now() const noexcept -> iop::time;
   void sleep(uint64_t ms) const noexcept;
   void yield() const noexcept;
-  void panic_() const noexcept __attribute__((noreturn));
+  void abort() const noexcept __attribute__((noreturn));
+  void halt() const noexcept __attribute__((noreturn));
 };
 
 extern Thread thisThread;

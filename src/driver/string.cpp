@@ -81,7 +81,7 @@ auto to_view(const CowString& str) -> std::string_view {
   } else if (const auto *value = std::get_if<std::string>(&str)) {
     return iop::to_view(*value);
   }
-  iop_panic(IOP_STATIC_STRING("Invalid variant types"));
+  iop_panic(IOP_STATIC_STR("Invalid variant types"));
 }
 
 auto to_view(const std::vector<uint8_t>& vec) -> std::string_view {

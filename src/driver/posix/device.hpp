@@ -15,14 +15,13 @@
 #include <net/if.h>
 #include <unistd.h>
 
-#include <iostream>
-
 namespace driver {
+// NOOP for now as we assume the host will do it for us, eventually we will want to do it by ourselves
 void Device::syncNTP() const noexcept {}
 
 auto Device::vcc() const noexcept -> uint16_t { return UINT16_MAX; }
 
-auto Device::platform() const noexcept -> iop::StaticString { return IOP_STATIC_STRING("POSIX"); }
+auto Device::platform() const noexcept -> iop::StaticString { return IOP_STATIC_STR("POSIX"); }
 
 auto Device::availableStorage() const noexcept -> uintmax_t {
   // TODO: handle errors
@@ -43,11 +42,12 @@ auto Device::availableMemory() const noexcept -> Memory {
   std::map<std::string_view, uintmax_t> biggestBlock;
   biggestBlock.insert({ std::string_view("DRAM"), pages * page_size }); // Ballpark
 
-  return Memory(driver::stack_size(), heap, biggestBlock);
+  return Memory(driver::stack_used(), heap, biggestBlock);
 }
 
-void Device::deepSleep(size_t seconds) const noexcept {
-  if (seconds == 0) seconds = SIZE_MAX;
+void Device::deepSleep(uintmax_t seconds) const noexcept {
+  if (seconds == 0) seconds = UINTMAX_MAX;
+  // Note: this only sleeps our current thread, but it's not that useful sleeping the entire process in Posix
   std::this_thread::sleep_for(std::chrono::seconds(seconds));
 }
 
@@ -59,13 +59,13 @@ iop::MD5Hash & Device::firmwareMD5() const noexcept {
   
   const auto filename = std::filesystem::current_path().append(driver::execution_path());
   std::ifstream file(filename);
-  iop_assert(file.is_open(), IOP_STATIC_STRING("Unable to open firmware file"));
+  iop_assert(file.is_open(), IOP_STATIC_STR("Unable to open firmware file"));
 
   const auto data = std::vector<uint8_t>((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  iop_assert(!file.fail(), IOP_STATIC_STRING("Unable to read from firmware file"));
+  iop_assert(!file.fail(), IOP_STATIC_STR("Unable to read from firmware file"));
 
   file.close();
-  iop_assert(!file.fail(), IOP_STATIC_STRING("Unable to close firmware file"));
+  iop_assert(!file.fail(), IOP_STATIC_STR("Unable to close firmware file"));
 
   uint8_t buff[16];
   MD5_CTX md5;

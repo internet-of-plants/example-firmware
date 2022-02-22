@@ -8,18 +8,18 @@
 
 namespace driver {
 // TODO: properly handle EEPROM internal errors
-void Storage::setup(size_t size) noexcept {
+auto Storage::setup(const uintmax_t size) noexcept -> bool {
     this->size = size;
     EEPROM.begin(size);
+    return true;
 }
-void Storage::commit() noexcept {
-    // TODO: report errors in storage usage
-    iop_assert(EEPROM.commit(), IOP_STATIC_STRING("EEPROM commit failed"));
+auto Storage::commit() noexcept -> bool {
+    return EEPROM.commit();
 }
-uint8_t const * Storage::asRef() const noexcept {
+auto Storage::asRef() const noexcept -> uint8_t const * {
     return EEPROM.getConstDataPtr();
 }
-uint8_t * Storage::asMut() noexcept {
+auto Storage::asMut() noexcept -> uint8_t * {
     return EEPROM.getDataPtr();
 }
 }

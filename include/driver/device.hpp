@@ -7,9 +7,11 @@
 #include <map>
 
 namespace driver {
+/// Describes the device's memory state in an instant.
 struct Memory {
   uintmax_t availableStack;
-  // It's a map because some environments have specialized RAMs
+  // It's a map because some environments have multiple, specialized, RAMs.
+  // This allocation sucks tho. The keys should have static lifetime
   std::map<std::string_view, uintmax_t> availableHeap;
   std::map<std::string_view, uintmax_t> biggestHeapBlock;
 
@@ -17,17 +19,38 @@ struct Memory {
     availableStack(stack), availableHeap(heap), biggestHeapBlock(biggestBlock) {}
 };
 
+/// High level abstraction to manage and monitor device resources
 class Device {
 public:
-  void syncNTP() const noexcept;
-  // Note: We handle firmware space and data space differently across environments, this could be improved
+  /// Measures current storage available in the device. Depending on the device it might be flash memory, HDD, SSD, etc.
   auto availableStorage() const noexcept -> uintmax_t;
+
+  /// Measures current memory usage by the device
+  ///
+  /// This is very important for monitoring heap fragmentation as the device runs for a long time
   auto availableMemory() const noexcept -> Memory;
+
+  /// Measures current VCC usage by the device, some platforms may return UINT16_MAX as they don't have an API for monitoring it.
   auto vcc() const noexcept -> uint16_t;
-  void deepSleep(size_t seconds) const noexcept;
-  std::array<char, 32>& firmwareMD5() const noexcept;
-  std::array<char, 17>& macAddress() const noexcept;
-  ::iop::StaticString platform() const noexcept;
+
+  /// Puts device in standby mode, pauses all threads, so the device uses almost no energy.
+  auto deepSleep(uintmax_t seconds) const noexcept -> void;
+
+  /// Returns a reference to a static buffer containing the firmware's MD5 hash
+  auto firmwareMD5() const noexcept -> iop::MD5Hash &;
+
+  /// Returns a reference to a static buffer containing the device's MacAddress
+  auto macAddress() const noexcept -> iop::MacAddress &;
+
+  /// Retrieves the device's platform name, as in the driver backend it's using
+  auto platform() const noexcept -> iop::StaticString;
+
+  /// Syncronizes internal clock with the network, might be a No-Op depending on the device
+  /// Returns true if it succeeds, false if it fails 
+  ///
+  /// Note: network.cpp might be a more appropriate place for this
+  /// TODO: report errors, check for network, etc
+  auto syncNTP() const noexcept -> void;
 };
 extern Device device;
 }

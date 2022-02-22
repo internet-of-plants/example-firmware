@@ -7,7 +7,7 @@
 
 namespace driver {
 iop::Log & logger() noexcept {
-  static iop::Log logger_(iop::LogLevel::WARN, IOP_STATIC_STRING("HTTP Server"));
+  static iop::Log logger_(iop::LogLevel::WARN, IOP_STATIC_STR("HTTP Server"));
   return logger_;
 }
 
@@ -39,11 +39,11 @@ HttpServer::HttpServer(uint32_t port) noexcept { IOP_TRACE(); serverPort = port;
 
 auto validateServer(void **ptr) noexcept -> ESP8266WebServer & {
   if (!*ptr) {
-    iop_assert(serverPort != 0, IOP_STATIC_STRING("Server port is not defined"));
+    iop_assert(serverPort != 0, IOP_STATIC_STR("Server port is not defined"));
     ESP8266WebServer **s = reinterpret_cast<ESP8266WebServer **>(ptr);
     *s = new (std::nothrow) ESP8266WebServer(serverPort);
   }
-  iop_assert(*ptr, IOP_STATIC_STRING("Unable to allocate ESP8266WebServer"));
+  iop_assert(*ptr, IOP_STATIC_STR("Unable to allocate ESP8266WebServer"));
   return to_server(*ptr);
 }
 HttpConnection::HttpConnection(HttpConnection &&other) noexcept: server(other.server) {
@@ -72,7 +72,7 @@ void HttpServer::begin() noexcept { IOP_TRACE(); validateServer(&this->server).b
 void HttpServer::close() noexcept { IOP_TRACE(); validateServer(&this->server).close(); }
 void HttpServer::handleClient() noexcept {
   IOP_TRACE();
-  iop_assert(!this->isHandlingRequest, IOP_STATIC_STRING("Already handling a client"));
+  iop_assert(!this->isHandlingRequest, IOP_STATIC_STR("Already handling a client"));
   this->isHandlingRequest = true;
   validateServer(&this->server).handleClient();
   this->isHandlingRequest = false;
@@ -102,17 +102,17 @@ CaptivePortal::~CaptivePortal() noexcept {
 void CaptivePortal::start() noexcept {
   const uint16_t port = 53;
   this->server = new (std::nothrow) DNSServer();
-  iop_assert(this->server, IOP_STATIC_STRING("Unable to allocate DNSServer"));
+  iop_assert(this->server, IOP_STATIC_STR("Unable to allocate DNSServer"));
   this->server->setErrorReplyCode(DNSReplyCode::NoError);
-  this->server->start(port, IOP_STATIC_STRING("*").get(), ::WiFi.softAPIP());
+  this->server->start(port, IOP_STATIC_STR("*").get(), ::WiFi.softAPIP());
 }
 void CaptivePortal::close() noexcept {
-  iop_assert(this->server, IOP_STATIC_STRING("Must initialize DNSServer first"));
+  iop_assert(this->server, IOP_STATIC_STR("Must initialize DNSServer first"));
   this->server->stop();
   this->server = nullptr;
 }
 void CaptivePortal::handleClient() const noexcept {
-  iop_assert(this->server, IOP_STATIC_STRING("Must initialize DNSServer first"));
+  iop_assert(this->server, IOP_STATIC_STR("Must initialize DNSServer first"));
   this->server->processNextRequest();
 }
 }

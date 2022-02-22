@@ -18,29 +18,29 @@ auto rawStatusToString(const RawStatus status) noexcept -> iop::StaticString {
   IOP_TRACE();
   switch (status) {
   case driver::RawStatus::CONNECTION_FAILED:
-    return IOP_STATIC_STRING("CONNECTION_FAILED");
+    return IOP_STATIC_STR("CONNECTION_FAILED");
   case driver::RawStatus::SEND_FAILED:
-    return IOP_STATIC_STRING("SEND_FAILED");
+    return IOP_STATIC_STR("SEND_FAILED");
   case driver::RawStatus::READ_FAILED:
-    return IOP_STATIC_STRING("READ_FAILED");
+    return IOP_STATIC_STR("READ_FAILED");
   case driver::RawStatus::ENCODING_NOT_SUPPORTED:
-    return IOP_STATIC_STRING("ENCODING_NOT_SUPPORTED");
+    return IOP_STATIC_STR("ENCODING_NOT_SUPPORTED");
   case driver::RawStatus::NO_SERVER:
-    return IOP_STATIC_STRING("NO_SERVER");
+    return IOP_STATIC_STR("NO_SERVER");
   case driver::RawStatus::READ_TIMEOUT:
-    return IOP_STATIC_STRING("READ_TIMEOUT");
+    return IOP_STATIC_STR("READ_TIMEOUT");
   case driver::RawStatus::CONNECTION_LOST:
-    return IOP_STATIC_STRING("CONNECTION_LOST");
+    return IOP_STATIC_STR("CONNECTION_LOST");
   case driver::RawStatus::OK:
-    return IOP_STATIC_STRING("OK");
+    return IOP_STATIC_STR("OK");
   case driver::RawStatus::SERVER_ERROR:
-    return IOP_STATIC_STRING("SERVER_ERROR");
+    return IOP_STATIC_STR("SERVER_ERROR");
   case driver::RawStatus::FORBIDDEN:
-    return IOP_STATIC_STRING("FORBIDDEN");
+    return IOP_STATIC_STR("FORBIDDEN");
   case driver::RawStatus::UNKNOWN:
-    return IOP_STATIC_STRING("UNKNOWN");
+    return IOP_STATIC_STR("UNKNOWN");
   }
-  return IOP_STATIC_STRING("UNKNOWN-not-documented");
+  return IOP_STATIC_STR("UNKNOWN-not-documented");
 }
 }
 

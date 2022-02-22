@@ -3,16 +3,19 @@
 
 #include "driver/string.hpp"
 
+/// Helps getting metadata on the executed code (at compile time)
 #define IOP_FILE ::iop::StaticString(reinterpret_cast<const __FlashStringHelper*>(__FILE__))
 #define IOP_LINE static_cast<uint32_t>(__LINE__)
 #define IOP_FUNC ::iop::StaticString(reinterpret_cast<const __FlashStringHelper*>(__PRETTY_FUNCTION__))
 
 /// Returns CodePoint object pointing to the caller
 /// This is useful to track callers of functions that can panic
+/// C++20 solves this need, but it's not supported in _most_ platforms
 #define IOP_CTX() IOP_CODE_POINT()
 #define IOP_CODE_POINT() ::iop::CodePoint(IOP_FILE, IOP_LINE, IOP_FUNC)
 
 /// Logs scope changes to serial if logLevel is set to TRACE
+/// FIXME: Sadly tracing is a global property for now, it should be fixed
 #define IOP_TRACE() IOP_TRACE_INNER(__COUNTER__)
 // Technobabble to stringify __COUNTER__
 #define IOP_TRACE_INNER(x) IOP_TRACE_INNER2(x)
@@ -20,7 +23,11 @@
 
 namespace iop {
 
+/// Specifies logging level hierarchy
 enum class LogLevel { TRACE, DEBUG, INFO, WARN, ERROR, CRIT, NO_LOG };
+
+/// Internal structure to allow dynamically building logs
+/// Helpful for properly displaying logging metadata, but also for network/storage logging
 enum class LogType { START, CONTINUITY, STARTEND, END };
 
 /// Represents an individual point in the codebase (used to track callers of panics)
@@ -39,7 +46,7 @@ public:
   auto func() const noexcept -> StaticString { return this->func_; }
 };
 
-/// Tracer objects, logs scoping changes. Useful for debugging.
+/// Tracer objects, logs scope changes. Useful for debugging.
 ///
 /// Doesn't use the official logging system to avoid clutter.
 // TODO: use official logging and stop with global tracing
@@ -50,6 +57,8 @@ public:
   /// Use `IOP_TRACE()` instead of instantiating it manually.
   explicit Tracer(CodePoint point) noexcept;
   ~Tracer() noexcept;
+
+  // Don't move or copy it, just use it as a scope logging guard
   Tracer(const Tracer &other) noexcept = delete;
   Tracer(Tracer &&other) noexcept = delete;
   auto operator=(const Tracer &other) noexcept -> Tracer & = delete;
@@ -195,9 +204,9 @@ private:
                      const StaticString msg,
                      const Args &...args) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::START, IOP_STATIC_STRING(""));
+      this->log(level, msg, LogType::START, IOP_STATIC_STR(""));
     } else {
-      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STRING(""));
+      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STR(""));
     }
     this->log_recursive(level, false, args...);
   }
@@ -207,9 +216,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const StaticString msg) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STRING("\n"));
+      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STR("\n"));
     } else {
-      this->log(level, msg, LogType::END, IOP_STATIC_STRING("\n"));
+      this->log(level, msg, LogType::END, IOP_STATIC_STR("\n"));
     }
   }
 
@@ -218,9 +227,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const std::string_view msg, const Args &...args) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::START, IOP_STATIC_STRING(""));
+      this->log(level, msg, LogType::START, IOP_STATIC_STR(""));
     } else {
-      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STRING(""));
+      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STR(""));
     }
     this->log_recursive(level, false, args...);
   }
@@ -230,9 +239,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const std::string_view msg) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STRING("\n"));
+      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STR("\n"));
     } else {
-      this->log(level, msg, LogType::END, IOP_STATIC_STRING("\n"));
+      this->log(level, msg, LogType::END, IOP_STATIC_STR("\n"));
     }
   }
 

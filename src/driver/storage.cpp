@@ -13,14 +13,15 @@
 namespace driver {
 Storage storage;
 
-std::optional<uint8_t> Storage::read(const size_t address) const noexcept {
+auto Storage::read(const uintmax_t address) const noexcept -> std::optional<uint8_t> {
     if (address >= this->size) return std::optional<uint8_t>();
     return this->asRef()[address];
 }
 
-void Storage::write(const size_t address, uint8_t const val) noexcept {
-    iop_assert(this->buffer, IOP_STATIC_STRING("Buffer is nullptr"));
-    iop_assert(address < this->size, IOP_STATIC_STRING("Write to invalid address"));
+auto Storage::write(const uintmax_t address, uint8_t const val) noexcept -> bool {
+    iop_assert(this->buffer, IOP_STATIC_STR("Buffer is nullptr"));
+    if (address >= this->size) return false;
     this->asMut()[address] = val;
+    return true;
 }
 }

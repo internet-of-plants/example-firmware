@@ -36,7 +36,7 @@ class __FlashStringHelper;
 #error "Target not supported"
 #endif
 
-#define IOP_STATIC_STRING(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_STORAGE_RAW(string_literal)))
+#define IOP_STATIC_STR(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_STORAGE_RAW(string_literal)))
 
 namespace iop {
 /// Allows for possibly destructive operations, like scaping non printable characters

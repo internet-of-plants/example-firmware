@@ -5,14 +5,14 @@
 
 namespace driver {
 namespace io {
-void GPIO::mode(const Pin pin, const Mode mode) const noexcept {
+auto GPIO::setMode(const Pin pin, const Mode mode) const noexcept -> void {
     ::pinMode(static_cast<uint8_t>(pin), static_cast<uint8_t>(mode));
 }
 auto GPIO::digitalRead(const Pin pin) const noexcept -> Data {
     return ::digitalRead(static_cast<uint8_t>(pin)) ? Data::HIGH : Data::LOW;
 }
-void GPIO::alarm(const Pin pin, const Alarm mode, void (*func)()) const noexcept {
-    ::attachInterrupt(digitalPinToInterrupt(static_cast<uint8_t>(pin)), func, static_cast<uint8_t>(mode));
+auto GPIO::setInterrupt(const Pin pin, const InterruptState state, void (*func)()) const noexcept -> void {
+    ::attachInterrupt(digitalPinToInterrupt(static_cast<uint8_t>(pin)), func, static_cast<uint8_t>(state));
 }
 } // namespace io
 } // namespace driver

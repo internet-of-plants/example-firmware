@@ -7,43 +7,44 @@ namespace driver {
 // This driver is horrible, please fix this
 // Use fopen, properly report errors, keep the file open, memmap (?)...
 
-void Storage::setup(size_t size) noexcept {
-    if (size == 0) return;
-    this->buffer = new (std::nothrow) uint8_t[size];
-    iop_assert(this->buffer, IOP_STATIC_STRING("Allocation failed"));
-    std::memset(this->buffer, '\0', size);
+auto Storage::setup(uintmax_t size) noexcept -> bool {
+    iop_assert(size > 0, IOP_STATIC_STR("Storage size is zero"));
 
-    this->size = size;
-
-    std::ifstream file("eeprom.dat");
-    if (!file.is_open()) {
-        return;
+    if (!this->buffer) {
+        this->size = size;
+        this->buffer = new (std::nothrow) uint8_t[size];
+        if (!this->buffer) return false;
+        std::memset(this->buffer, '\0', size);
     }
 
+    std::ifstream file("eeprom.dat");
+    if (!file.is_open()) return false;
+
     file.read((char*) buffer, static_cast<std::streamsize>(size));
-    iop_assert(!file.fail(), IOP_STATIC_STRING("Read failed"));
+    if (file.fail()) return false;
 
     file.close();
-    iop_assert(!file.fail(), IOP_STATIC_STRING("Close failed"));
+    return !file.fail();
 }
-void Storage::commit() noexcept {
-    iop_assert(this->buffer, IOP_STATIC_STRING("Unable to allocate storage"));
-    //iop::Log(logLevel, IOP_STATIC_STRING("EEPROM")).debug(IOP_STATIC_STRING("Commit: "), utils::base64Encode(this->storage.get(), this->size));
+auto Storage::commit() noexcept -> bool {
+    // TODO: properly log errors
+    iop_assert(this->buffer, IOP_STATIC_STR("Unable to allocate storage"));
+    //iop::Log(logLevel, IOP_STATIC_STR("EEPROM")).debug(IOP_STATIC_STR("Commit: "), utils::base64Encode(this->storage.get(), this->size));
     std::ofstream file("eeprom.dat");
-    iop_assert(file.is_open(), IOP_STATIC_STRING("Unable to open eeprom.dat file"));
+    if (!file.is_open()) return false;
 
     file.write((char*) buffer, static_cast<std::streamsize>(size));
-    iop_assert(!file.fail(), IOP_STATIC_STRING("Write failed"));
+    if (file.fail()) return false;
 
     file.close();
-    iop_assert(!file.fail(), IOP_STATIC_STRING("Close failed"));
+    return !file.fail();
 }
-uint8_t const * Storage::asRef() const noexcept {
-    iop_assert(this->buffer, IOP_STATIC_STRING("Allocation failed"));
+auto Storage::asRef() const noexcept -> uint8_t const * {
+    iop_assert(this->buffer, IOP_STATIC_STR("Allocation failed"));
     return this->buffer;
 }
-uint8_t * Storage::asMut() noexcept {
-    iop_assert(this->buffer, IOP_STATIC_STRING("Allocation failed"));
+auto Storage::asMut() noexcept -> uint8_t * {
+    iop_assert(this->buffer, IOP_STATIC_STR("Allocation failed"));
     return this->buffer;
 }
 }

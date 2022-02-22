@@ -4,14 +4,17 @@
 #include <thread>
 
 namespace driver {
-void Thread::sleep(uint64_t ms) const noexcept {
+auto Thread::sleep(uint64_t ms) const noexcept -> void {
   std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
-void Thread::yield() const noexcept {
+auto Thread::yield() const noexcept -> void {
   std::this_thread::yield();
 }
-void Thread::panic_() const noexcept {
+auto Thread::abort() const noexcept -> void {
   std::abort();
+}
+auto Thread::halt() const noexcept -> void {
+  this->abort();
 }
 
 static const auto start = std::chrono::system_clock::now().time_since_epoch();
