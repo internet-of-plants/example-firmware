@@ -11,7 +11,7 @@ auto GPIO::setMode(const Pin pin, const Mode mode) const noexcept -> void {
 auto GPIO::digitalRead(const Pin pin) const noexcept -> Data {
     return ::digitalRead(static_cast<uint8_t>(pin)) ? Data::HIGH : Data::LOW;
 }
-auto GPIO::setInterrupt(const Pin pin, const InterruptState state, void (*func)()) const noexcept -> void {
+auto GPIO::setInterruptCallback(const Pin pin, const InterruptState state, void (*func)()) const noexcept -> void {
     ::attachInterrupt(digitalPinToInterrupt(static_cast<uint8_t>(pin)), func, static_cast<uint8_t>(state));
 }
 } // namespace io

@@ -8,7 +8,7 @@ namespace driver {
 // Use fopen, properly report errors, keep the file open, memmap (?)...
 
 auto Storage::setup(uintmax_t size) noexcept -> bool {
-    iop_assert(size > 0, IOP_STATIC_STR("Storage size is zero"));
+    iop_assert(size > 0, IOP_STR("Storage size is zero"));
 
     if (!this->buffer) {
         this->size = size;
@@ -28,8 +28,7 @@ auto Storage::setup(uintmax_t size) noexcept -> bool {
 }
 auto Storage::commit() noexcept -> bool {
     // TODO: properly log errors
-    iop_assert(this->buffer, IOP_STATIC_STR("Unable to allocate storage"));
-    //iop::Log(logLevel, IOP_STATIC_STR("EEPROM")).debug(IOP_STATIC_STR("Commit: "), utils::base64Encode(this->storage.get(), this->size));
+    iop_assert(this->buffer, IOP_STR("Unable to allocate storage"));
     std::ofstream file("eeprom.dat");
     if (!file.is_open()) return false;
 
@@ -40,11 +39,11 @@ auto Storage::commit() noexcept -> bool {
     return !file.fail();
 }
 auto Storage::asRef() const noexcept -> uint8_t const * {
-    iop_assert(this->buffer, IOP_STATIC_STR("Allocation failed"));
+    iop_assert(this->buffer, IOP_STR("Allocation failed"));
     return this->buffer;
 }
 auto Storage::asMut() noexcept -> uint8_t * {
-    iop_assert(this->buffer, IOP_STATIC_STR("Allocation failed"));
+    iop_assert(this->buffer, IOP_STR("Allocation failed"));
     return this->buffer;
 }
 }

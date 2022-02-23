@@ -32,7 +32,7 @@ private:
   void start() noexcept;
 
 public:
-  explicit CredentialsServer(const iop::LogLevel &logLevel) noexcept: logger(logLevel, IOP_STATIC_STR("SERVER")) {}
+  explicit CredentialsServer(const iop::LogLevel &logLevel) noexcept: logger(logLevel, IOP_STR("SERVER")) {}
 
   /// Setups everything the Captive Portal needs
   void setup() const noexcept;

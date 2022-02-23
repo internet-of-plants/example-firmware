@@ -45,7 +45,7 @@ public:
 
 private:
   void handleNotConnected() noexcept;
-  void handleInterrupt(const InterruptEvent event, const std::optional<std::reference_wrapper<const AuthToken>> &maybeToken) const noexcept;
+  void handleInterrupt(const InterruptEvent event, const std::optional<std::reference_wrapper<const AuthToken>> &token) const noexcept;
   void handleIopCredentials() noexcept;
   void handleCredentials() noexcept;
   void handleMeasurements(const AuthToken &token) noexcept;
@@ -54,7 +54,7 @@ public:
   explicit EventLoop(iop::StaticString uri, iop::LogLevel logLevel_) noexcept
       : credentialsServer(logLevel_),
         api_(std::move(uri), logLevel_),
-        logger(logLevel_, IOP_STATIC_STR("LOOP")), storage_(logLevel_),
+        logger(logLevel_, IOP_STR("LOOP")), storage_(logLevel_),
         sensors(config::soilResistivityPower, config::soilTemperature, config::airTempAndHumidity, config::dhtVersion),
         nextMeasurement(0), nextYieldLog(0), nextNTPSync(0), nextHandleConnectionLost(0),
         nextTryStorageWifiCredentials(0), nextTryHardcodedWifiCredentials(0), nextTryHardcodedIopCredentials(0) {
@@ -68,45 +68,5 @@ public:
 };
 
 extern EventLoop eventLoop;
-
-class GlobalData {
-  struct StackStruct {
-    std::array<char, 768> text;
-    AuthToken token;
-    std::array<char, 64> psk;
-    std::array<char, 32> ssid;
-  } *data;
-  
-  //static_assert(sizeof(StackStruct) <= 4096);
-
-public:
-  GlobalData() noexcept: data(new (std::nothrow) StackStruct()) {
-    iop_assert(data, IOP_STATIC_STR("Unable to allocate buffer"));
-    memset((void*)data, 0, sizeof(StackStruct));
-  }
-  void reset() noexcept {
-    memset((void*)data, 0, sizeof(StackStruct));
-  }
-  //GlobalData() noexcept: data(reinterpret_cast<StackStruct *>(0x3FFFE000)) {
-  //  memset((void*)0x3FFFE000, 0, 4096);
-  //}
-  //void reset() noexcept {
-  //  memset((void*)0x3FFFE000, 0, 4096);
-  //}
-  auto psk() noexcept -> std::array<char, 64> & {
-    return this->data->psk;
-  }
-  auto ssid() noexcept -> std::array<char, 32> & {
-    return this->data->ssid;
-  }
-  auto token() noexcept -> AuthToken & {
-    return this->data->token;
-  }
-  auto text() noexcept -> std::array<char, 768> & {
-    return this->data->text;
-  }
-  // ...
-};
-extern GlobalData globalData;
 
 #endif

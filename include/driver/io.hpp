@@ -48,12 +48,13 @@ public:
   /// Most platforms will just return the last value stored
   ///
   /// GPIO mode needs to be better abstracted
+  /// TODO UNSAFE
   auto digitalRead(Pin pin) const noexcept -> Data;
 
   /// Monitors specified pin for the desired state, calling callback when it happens
   ///
   /// The callback _MUST_ be cached in RAM (defined with the IOP_RAM macro), as some platforms can't read data from storage (so no fetching opcodes)
-  auto setInterrupt(Pin pin, InterruptState state, void (*func)()) const noexcept -> void;
+  auto setInterruptCallback(Pin pin, InterruptState state, void (*func)()) const noexcept -> void;
 };
 } // namespace io
 

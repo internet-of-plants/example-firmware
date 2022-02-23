@@ -21,6 +21,9 @@ private:
   iop::Log logger;
 
 public:
+  static constexpr size_t JsonCapacity = 768;
+  using Json = std::array<char, JsonCapacity>;
+
   Api(iop::StaticString uri, iop::LogLevel logLevel) noexcept;
 
   /// Initializes the networking internals, including TLS configuration
@@ -92,7 +95,7 @@ private:
   /// But some methods truncate the messages and try again, if they are critical.
   ///
   /// Gets a name for logging purposes. And a callback that insert data into the JSON serializer abstraction.
-  auto makeJson(const iop::StaticString contextName, const JsonCallback &jsonObjectBuilder) const noexcept -> std::optional<std::reference_wrapper<std::array<char, 768>>>;
+  auto makeJson(const iop::StaticString contextName, const JsonCallback &jsonObjectBuilder) const noexcept -> std::unique_ptr<Api::Json>;
 };
 
 /// Represents the data passed to the panic hook

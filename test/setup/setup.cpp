@@ -1,12 +1,13 @@
 #include <unity.h>
 
-void setup();
-void loop();
+#include "driver/runtime.hpp"
 
 int main(int argc, char** argv) {
+    (void) argc;
+    (void) argv;
+
     UNITY_BEGIN();
-    setup();
-    loop();
+    driver::setup();
     UNITY_END();
     return 0;
 }

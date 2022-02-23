@@ -13,12 +13,12 @@ constexpr static iop::PanicHook defaultHook(iop::PanicHook::defaultViewPanic,
 static iop::PanicHook hook(defaultHook);
 
 namespace iop {
-Log & panicLogger() noexcept {
-  static iop::Log logger(iop::LogLevel::CRIT, IOP_STATIC_STR("PANIC"));
+auto panicLogger() noexcept -> Log & {
+  static iop::Log logger(iop::LogLevel::CRIT, IOP_STR("PANIC"));
   return logger;
 }
 
-void panicHandler(std::string_view msg, CodePoint const &point) noexcept {
+auto panicHandler(std::string_view msg, CodePoint const &point) noexcept -> void {
   IOP_TRACE();
   hook.entry(msg, point);
   hook.viewPanic(msg, point);
@@ -26,7 +26,7 @@ void panicHandler(std::string_view msg, CodePoint const &point) noexcept {
   driver::thisThread.abort();
 }
 
-void panicHandler(StaticString msg, CodePoint const &point) noexcept {
+auto panicHandler(StaticString msg, CodePoint const &point) noexcept -> void {
   IOP_TRACE();
   const auto msg_ = msg.toString();
   hook.entry(msg_, point);
@@ -34,30 +34,27 @@ void panicHandler(StaticString msg, CodePoint const &point) noexcept {
   hook.halt(msg_, point);
   driver::thisThread.abort();
 }
-auto takePanicHook() noexcept -> PanicHook {
+auto takePanicHook() noexcept -> PanicHook -> void {
   auto old = hook;
   hook = defaultHook;
   return old;
 }
-void setPanicHook(PanicHook newHook) noexcept { hook = std::move(newHook); }
+auto setPanicHook(PanicHook newHook) noexcept -> void { hook = std::move(newHook); }
 
-void PanicHook::defaultViewPanic(std::string_view const &msg,
-                                 CodePoint const &point) noexcept {
-  iop::panicLogger().crit(IOP_STATIC_STR("Line "), ::std::to_string(point.line()), IOP_STATIC_STR(" of file "), point.file(),
-              IOP_STATIC_STR(" inside "), point.func(), IOP_STATIC_STR(": "), msg);
+auto PanicHook::defaultViewPanic(std::string_view const &msg, CodePoint const &point) noexcept -> void {
+  iop::panicLogger().crit(IOP_STR("Line "), ::std::to_string(point.line()), IOP_STR(" of file "), point.file(),
+              IOP_STR(" inside "), point.func(), IOP_STR(": "), msg);
 }
-void PanicHook::defaultStaticPanic(iop::StaticString const &msg,
-                                   CodePoint const &point) noexcept {
-  iop::panicLogger().crit(IOP_STATIC_STR("Line "), ::std::to_string(point.line()), IOP_STATIC_STR(" of file "), point.file(),
-              IOP_STATIC_STR(" inside "), point.func(), IOP_STATIC_STR(": "), msg);
+void PanicHook::defaultStaticPanic(iop::StaticString const &msg, CodePoint const &point) noexcept {
+  iop::panicLogger().crit(IOP_STR("Line "), ::std::to_string(point.line()), IOP_STR(" of file "), point.file(),
+              IOP_STR(" inside "), point.func(), IOP_STR(": "), msg);
 }
-void PanicHook::defaultEntry(std::string_view const &msg,
-                             CodePoint const &point) noexcept {
+void PanicHook::defaultEntry(std::string_view const &msg, CodePoint const &point) noexcept {
   IOP_TRACE();
   if (isPanicking) {
-    iop::panicLogger().crit(IOP_STATIC_STR("PANICK REENTRY: Line "), std::to_string(point.line()),
-                IOP_STATIC_STR(" of file "), point.file(), IOP_STATIC_STR(" inside "), point.func(),
-                IOP_STATIC_STR(": "), msg);
+    iop::panicLogger().crit(IOP_STR("PANICK REENTRY: Line "), std::to_string(point.line()),
+                IOP_STR(" of file "), point.file(), IOP_STR(" inside "), point.func(),
+                IOP_STR(": "), msg);
     iop::logMemory(iop::panicLogger());
     driver::thisThread.halt();
   }
@@ -66,8 +63,7 @@ void PanicHook::defaultEntry(std::string_view const &msg,
   constexpr const uint16_t oneSecond = 1000;
   driver::thisThread.sleep(oneSecond);
 }
-void PanicHook::defaultHalt(std::string_view const &msg,
-                            CodePoint const &point) noexcept {
+void PanicHook::defaultHalt(std::string_view const &msg, CodePoint const &point) noexcept {
   (void)msg;
   (void)point;
   IOP_TRACE();

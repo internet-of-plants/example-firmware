@@ -36,7 +36,7 @@ class __FlashStringHelper;
 #error "Target not supported"
 #endif
 
-#define IOP_STATIC_STR(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_STORAGE_RAW(string_literal)))
+#define IOP_STR(string_literal) iop::StaticString(reinterpret_cast<const __FlashStringHelper *>(IOP_STORAGE_RAW(string_literal)))
 
 namespace iop {
 /// Allows for possibly destructive operations, like scaping non printable characters
@@ -64,6 +64,9 @@ auto scapeNonPrintable(std::string_view txt) noexcept -> CowString;
 
 using MD5Hash = std::array<char, 32>;
 using MacAddress = std::array<char, 17>;
+using NetworkName = std::array<char, 32>;
+using NetworkPassword = std::array<char, 64>;
+
 
 /// Helper string that holds a pointer to a string stored in PROGMEM
 ///

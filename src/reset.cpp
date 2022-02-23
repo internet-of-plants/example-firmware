@@ -7,20 +7,19 @@
 static volatile iop::time resetStateTime = 0;
 
 void IOP_RAM buttonChanged() noexcept {
-  // IOP_TRACE();
+  IOP_TRACE();
+
+  constexpr const uint32_t fifteenSeconds = 15000;
   if (driver::gpio.digitalRead(config::factoryResetButton) == driver::io::Data::HIGH) {
     resetStateTime = driver::thisThread.now();
+    
     if (config::logLevel >= iop::LogLevel::INFO)
-      iop::Log::print("[INFO] RESET: Pressed FACTORY_RESET button. Keep it pressed for at least 15 seconds to factory reset your device\n",
-                      iop::LogLevel::INFO, iop::LogType::STARTEND);
-  } else {
-    constexpr const uint32_t fifteenSeconds = 15000;
-    if (resetStateTime + fifteenSeconds < driver::thisThread.now()) {
+      iop::Log::print("[INFO] RESET: Press FACTORY_RESET button for 15 seconds more to factory reset the device\n", iop::LogLevel ::INFO, iop::LogType::STARTEND);
+  } else if (resetStateTime + fifteenSeconds < driver::thisThread.now()) {
       utils::scheduleInterrupt(InterruptEvent::FACTORY_RESET);
+
       if (config::logLevel >= iop::LogLevel::INFO)
-        iop::Log::print("[INFO] RESET: Setted FACTORY_RESET flag, running it in the next loop run\n",
-            iop::LogLevel::INFO, iop::LogType::STARTEND);
-    }
+        iop::Log::print("[INFO] RESET: Factory reset scheduled, it will run in the next loop run\n", iop::LogLevel::INFO, iop::LogType::STARTEND);
   }
 }
 
@@ -28,7 +27,7 @@ namespace reset {
 void setup() noexcept {
   IOP_TRACE();
   driver::gpio.setMode(config::factoryResetButton, driver::io::Mode::INPUT);
-  driver::gpio.setInterrupt(config::factoryResetButton, driver::io::InterruptState::CHANGE, buttonChanged);
+  driver::gpio.setInterruptCallback(config::factoryResetButton, driver::io::InterruptState::CHANGE, buttonChanged);
 }
 } // namespace reset
 #else

@@ -6,12 +6,12 @@
 
 #include "driver/thread.hpp"
 
-static void staticPrinter(const iop::StaticString str, iop::LogLevel level, iop::LogType kind) noexcept;
-static void viewPrinter(const std::string_view, iop::LogLevel level, iop::LogType kind) noexcept;
-static void setuper(iop::LogLevel level) noexcept;
-static void flusher() noexcept;
+static auto staticPrinter(const iop::StaticString str, iop::LogLevel level, iop::LogType kind) noexcept -> void;
+static auto viewPrinter(const std::string_view, iop::LogLevel level, iop::LogType kind) noexcept -> void;
+static auto setuper(iop::LogLevel level) noexcept -> void;
+static auto flusher() noexcept -> void;
 
-static iop::LogHook hook(viewPrinter, staticPrinter, setuper, flusher);
+static auto hook = iop::LogHook(viewPrinter, staticPrinter, setuper, flusher);
 
 namespace network_logger {
   void setup() noexcept {
@@ -20,94 +20,56 @@ namespace network_logger {
   }
 }
 
-class ByteRate {
-  uint64_t nextReset{0};
-  size_t lastBytesPerMinute{0};
-  size_t bytes{0};
+static auto currentLog = std::string();
+static auto logToNetwork = true;
 
-public:
-  ByteRate() noexcept = default;
-
-  void resetIfNeeded() noexcept {
-    constexpr const size_t minutes = 5;
-    constexpr const uint32_t fiveMin = minutes * 1000 * 60;
-    this->nextReset = driver::thisThread.now() + fiveMin;
-    this->lastBytesPerMinute = this->bytes / minutes;
-    this->bytes = 0;
-  }
-
-  void addBytes(size_t bytes) noexcept {
-    this->resetIfNeeded();
-    this->bytes += bytes;
-  }
-
-  auto bytesPerMinute() const noexcept -> size_t {
-    return this->lastBytesPerMinute;
-  }
-};
-
-static ByteRate byteRate;
-static std::string currentLog;
-
-// TODO(pc): allow gradually sending bytes wifiClient->write(...) instead of
-// buffering the log before sending We can use the already in place system of
-// variadic templates to avoid this buffer
-// TODO(pc): use ByteRate to allow grouping messages before sending, or reuse
-// the TCP connection to many
-
-static bool logNetwork = true;
 void reportLog() noexcept {
-  if (!logNetwork || !currentLog.length())
+  if (!logToNetwork || !currentLog.length())
     return;
+  logToNetwork = false;
 
   driver::thisThread.yield();
-  logNetwork = false;
+
   const auto token = eventLoop.storage().token();
   if (token) {
     eventLoop.api().registerLog(*token, currentLog);
   } else {
-    iop::Log(iop::LogLevel::WARN, IOP_STATIC_STR("NETWORK LOGGING")).warn(IOP_STATIC_STR("Unable to log to the monitor server, not authenticated"));
+    iop::Log(iop::LogLevel::WARN, IOP_STR("NETWORK LOGGING")).warn(IOP_STR("Unable to log to the monitor server, not authenticated"));
   }
-  logNetwork = true;
+  logToNetwork = true;
   currentLog.clear();
 }
 
-static void staticPrinter(const iop::StaticString str,
-                          const iop::LogLevel level,
-                          const iop::LogType kind) noexcept {
+static void staticPrinter(const iop::StaticString str, const iop::LogLevel level, const iop::LogType kind) noexcept {
   iop::LogHook::defaultStaticPrinter(str, level, kind);
 
-  if (logNetwork && level >= iop::LogLevel::INFO) {
-    currentLog += str.asCharPtr();
-    byteRate.addBytes(str.length());
+  if (logToNetwork && level >= iop::LogLevel::INFO) {
+    currentLog += str.toString();
+
     if (kind == iop::LogType::END || kind == iop::LogType::STARTEND) {
-      iop::LogHook::defaultStaticPrinter(IOP_STATIC_STR("Logging to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
+      iop::LogHook::defaultStaticPrinter(IOP_STR("Logging to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
       reportLog();
-      iop::LogHook::defaultStaticPrinter(IOP_STATIC_STR("Logged to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
+      iop::LogHook::defaultStaticPrinter(IOP_STR("Logged to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
     }
   }
 }
-static void viewPrinter(const std::string_view str, const iop::LogLevel level, const iop::LogType kind) noexcept {
+static auto viewPrinter(const std::string_view str, const iop::LogLevel level, const iop::LogType kind) noexcept -> void {
   iop::LogHook::defaultViewPrinter(str, level, kind);
 
-  if (logNetwork && level >= iop::LogLevel::INFO) {
+  if (logToNetwork && level >= iop::LogLevel::INFO) {
     currentLog += str;
-    byteRate.addBytes(str.length());
+
     if (kind == iop::LogType::END || kind == iop::LogType::STARTEND) {
-      iop::LogHook::defaultStaticPrinter(IOP_STATIC_STR("Logging to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
+      iop::LogHook::defaultStaticPrinter(IOP_STR("Logging to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
       reportLog();
-      iop::LogHook::defaultStaticPrinter(IOP_STATIC_STR("Logged to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
+      iop::LogHook::defaultStaticPrinter(IOP_STR("Logged to network\n"), iop::LogLevel::INFO, iop::LogType::STARTEND);
     }
   }
 }
-static void flusher() noexcept { iop::LogHook::defaultFlusher(); }
-static void setuper(iop::LogLevel level) noexcept {
-  iop::LogHook::defaultSetuper(level);
-}
+static auto flusher() noexcept -> void { iop::LogHook::defaultFlusher(); }
+static auto setuper(iop::LogLevel level) noexcept -> void { iop::LogHook::defaultSetuper(level); }
 #else
 namespace network_logger {
-  void setup() noexcept {
-    iop::Log::setup(config::logLevel);
-  }
+  auto setup() noexcept -> void { iop::Log::setup(config::logLevel); }
 }
 #endif

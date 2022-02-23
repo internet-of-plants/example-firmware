@@ -10,9 +10,10 @@ static uintptr_t stackstart = 0;
 
 namespace driver {
 auto execution_path() noexcept -> std::string_view {
-  iop_assert(filename != nullptr, IOP_STATIC_STR("Filename wasn't initialized, maybe you are trying to get the execution path before main runs?"));
+  iop_assert(filename != nullptr, IOP_STR("Filename wasn't initialized, maybe you are trying to get the execution path before main runs?"));
   return filename;
 }
+#ifdef IOP_POSIX
 auto stack_used() noexcept -> uintmax_t {
   uintptr_t stackend;
   stackend = (uintptr_t) (void*) &stackend;
@@ -21,14 +22,15 @@ auto stack_used() noexcept -> uintmax_t {
   struct rlimit limit;
   getrlimit(RLIMIT_STACK, &limit);
 
-  iop_assert(stackstart != 0, IOP_STATIC_STR("The stack start has never been collected, maybe are you trying to get the stack size before main runs?"));
+  iop_assert(stackstart != 0, IOP_STR("The stack start has never been collected, maybe are you trying to get the stack size before main runs?"));
   return limit.rlim_cur - (stackstart - stackend);
 }
+#endif
 }
 
 int main(int argc, char** argv) {
   stackstart = (uintptr_t) (void*) &argc;
-  iop_assert(argc > 0, IOP_STATIC_STR("argc is 0"));
+  iop_assert(argc > 0, IOP_STR("argc is 0"));
   filename = argv[0];
 
   driver::setup();

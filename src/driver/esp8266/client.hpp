@@ -52,7 +52,7 @@ Session::~Session() noexcept {
     this->http->get().http->end();
 }
 void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept {
-  iop_assert(this->http, IOP_STATIC_STR("HTTP client is nullptr"));
+  iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
   this->http->collectHeaders(headers, count);
 }
 std::string Response::header(iop::StaticString key) const noexcept {
@@ -61,23 +61,23 @@ std::string Response::header(iop::StaticString key) const noexcept {
   return std::move(value->second);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   this->http->get().http->addHeader(String(key.get()), String(value.get()));
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   String val;
   val.concat(value.begin(), value.length());
   this->http->get().http->addHeader(String(key.get()), val);
 }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   String header;
   header.concat(key.begin(), key.length());
   this->http->get().http->addHeader(header, String(value.get()));
 }
 void Session::addHeader(std::string_view key, std::string_view value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   String val;
   val.concat(value.begin(), value.length());
 
@@ -86,12 +86,12 @@ void Session::addHeader(std::string_view key, std::string_view value) noexcept {
   this->http->get().http->addHeader(header, val);
 }
 void Session::setAuthorization(std::string auth) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   this->http->get().http->setAuthorization(auth.c_str());
 }
-auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) noexcept -> std::variant<Response, int> {
-  iop_assert(this->http && this->http->get().http, IOP_STATIC_STR("Session has been moved out"));
-  const auto code = this->http->get().http->sendRequest(method.c_str(), data, len);
+auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> std::variant<Response, int> {
+  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
+  const auto code = this->http->get().http->sendRequest(method.c_str(), reinterpret_cast<const uint8_t*>(data.begin()), data.length());
   if (code < 0) {
     return code;
   }
@@ -113,7 +113,7 @@ auto Session::sendRequest(std::string method, const uint8_t *data, size_t len) n
 }
 
 HTTPClient::HTTPClient() noexcept: http(new (std::nothrow) ::HTTPClient()) {
-  iop_assert(http, IOP_STATIC_STR("OOM"));
+  iop_assert(http, IOP_STR("OOM"));
 }
 HTTPClient::~HTTPClient() noexcept {
   delete this->http;
@@ -122,9 +122,9 @@ HTTPClient::~HTTPClient() noexcept {
 std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept {
   IOP_TRACE(); 
   
-  //iop_assert(iop::data.wifi.client, IOP_STATIC_STR("Wifi has been moved out, client is nullptr"));
-  //iop::data.wifi.client.setNoDelay(false);
-  //iop::data.wifi.client.setSync(true);
+  //iop_assert(iop::wifi.client, IOP_STR("Wifi has been moved out, client is nullptr"));
+  //iop::wifi.client.setNoDelay(false);
+  //iop::wifi.client.setSync(true);
 
   // We can afford bigger timeouts since we shouldn't make frequent requests
   //constexpr uint16_t oneMinuteMs = 3 * 60 * 1000;
@@ -154,21 +154,21 @@ std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept {
   } else if (uri.find("https://") != uri.npos) {
     portStr = "443";
   } else {
-    iop_panic(IOP_STATIC_STR("Protocol missing inside HttpClient::begin"));
+    iop_panic(IOP_STR("Protocol missing inside HttpClient::begin"));
   }
 
   uint16_t port;
   auto result = std::from_chars(portStr.data(), portStr.data() + portStr.size(), port);
   if (result.ec != std::errc()) {
-    iop_panic(IOP_STATIC_STR("Unable to confert port to uint16_t: ").toString() + portStr.begin() + IOP_STATIC_STR(" ").toString() + std::error_condition(result.ec).message());
+    iop_panic(IOP_STR("Unable to confert port to uint16_t: ").toString() + portStr.begin() + IOP_STR(" ").toString() + std::error_condition(result.ec).message());
   }
 
-  iop_assert(iop::data.wifi.client, IOP_STATIC_STR("Wifi has been moved out, client is nullptr"));
-  iop_assert(this->http, IOP_STATIC_STR("HTTP client is nullptr"));
+  iop_assert(iop::wifi.client, IOP_STR("Wifi has been moved out, client is nullptr"));
+  iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
   //this->http.setReuse(false);
   auto uriArduino = String();
   uriArduino.concat(uri.begin(), uri.length());
-  if (this->http->begin(*iop::data.wifi.client, uriArduino)) {
+  if (this->http->begin(*iop::wifi.client, uriArduino)) {
     return Session(*this, uri);
   }
 

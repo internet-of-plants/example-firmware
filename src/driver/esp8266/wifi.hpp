@@ -5,14 +5,14 @@
 
 namespace driver { 
 Wifi::Wifi() noexcept: client(new (std::nothrow) std::remove_pointer<driver::NetworkClientPtr>::type()) {
-    iop_assert(client, IOP_STATIC_STR("OOM"));
+    iop_assert(client, IOP_STR("OOM"));
 }
 
 Wifi::~Wifi() noexcept {
     delete this->client;
 }
 
-void Wifi::onStationGotIP(std::function<void()> f) noexcept {
+void Wifi::onConnect(std::function<void()> f) noexcept {
   ::WiFi.onStationModeGotIP([f](const ::WiFiEventStationModeGotIP &ev) {
       (void) ev;
       f();
@@ -47,7 +47,7 @@ StationStatus Wifi::status() const noexcept {
         case 255: // No idea what this is, but it's returned sometimes;
             return StationStatus::IDLE;
     }
-    iop_panic(IOP_STATIC_STR("Unreachable status: ").toString() + std::to_string(static_cast<uint8_t>(s)));
+    iop_panic(IOP_STR("Unreachable status: ").toString() + std::to_string(static_cast<uint8_t>(s)));
 }
 
 void Wifi::setupAccessPoint() const noexcept {
@@ -77,7 +77,7 @@ void Wifi::setMode(WiFiMode mode) const noexcept {
             ::WiFi.mode(WIFI_AP_STA);
             return;
     }
-    iop_panic(IOP_STATIC_STR("Unreachable"));
+    iop_panic(IOP_STR("Unreachable"));
 }
 
 void Wifi::reconnect() const noexcept {
@@ -96,18 +96,18 @@ void Wifi::stationDisconnect() const noexcept {
     ETS_UART_INTR_ENABLE(); // NOLINT hicpp-signed-bitwise
 }
 
-std::pair<std::array<char, 32>, std::array<char, 64>> Wifi::credentials() const noexcept {
+std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noexcept {
     IOP_TRACE()
 
     station_config config;
     memset(&config, '\0', sizeof(config));
     wifi_station_get_config(&config);
 
-    auto ssid = std::array<char, 32>();
+    auto ssid = iop::NetworkName();
     ssid.fill('\0');
     std::memcpy(ssid.data(), config.ssid, sizeof(config.ssid));
 
-    auto psk = std::array<char, 64>();
+    auto psk = iop::NetworkPassword();
     psk.fill('\0');
     std::memcpy(psk.data(), config.password, sizeof(config.password));
 
@@ -119,10 +119,10 @@ void Wifi::wake() const noexcept {
 }
 
 void Wifi::setup(driver::CertStore *certStore) noexcept {
-  iop_assert(this->client, IOP_STATIC_STR("Wifi has been moved out, client is nullptr"));
+  iop_assert(this->client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
   #ifdef IOP_SSL
-  iop_assert(certStore && certStore->internal, IOP_STATIC_STR("CertStore is not set, but SSL is enabled"));
+  iop_assert(certStore && certStore->internal, IOP_STR("CertStore is not set, but SSL is enabled"));
   this->client->setCertStore(certStore->internal);
   #endif
 
@@ -142,7 +142,7 @@ WiFiMode Wifi::mode() const noexcept {
         case WIFI_AP_STA:
             return WiFiMode::ACCESS_POINT_AND_STATION;
     }
-    iop_panic(IOP_STATIC_STR("Unreachable"));
+    iop_panic(IOP_STR("Unreachable"));
 }
 
 void Wifi::connectAP(std::string_view ssid, std::string_view psk) const noexcept {

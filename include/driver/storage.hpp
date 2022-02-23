@@ -32,10 +32,12 @@ public:
   /// Commits data to storage, allows buffering data before storage, as physical writes can be expensive
   auto commit() noexcept -> bool;
 
+  // TODO: this API still is fragile, we should only support std::arrays, but by type, not size
+
   /// Reads byte from specified address, returns std::nullopt if address is out of bounds
   template<uintmax_t SIZE> 
   auto read(uintmax_t address) const noexcept -> std::optional<std::array<char, SIZE>> {
-    if (address + sizeof(std::array<char, SIZE>) <= this->size) return std::nullopt;
+    if (address + sizeof(std::array<char, SIZE>) >= this->size) return std::nullopt;
     std::array<char, SIZE> array;
     memcpy(array.data(), this->asRef() + address, sizeof(std::array<char, SIZE>));
     return array;
@@ -44,8 +46,8 @@ public:
   /// Schedules writes of arrays to storage.
   template<uintmax_t SIZE> 
   auto write(const uintmax_t address, const std::array<char, SIZE> &array) -> bool {
-    if (address + sizeof(std::array<char, SIZE>) <= this->size) return false;
-    memcpy(this->asMut() + address, &array, sizeof(std::array<char, SIZE>));
+    if (address + sizeof(std::array<char, SIZE>) >= this->size) return false;
+    memcpy(this->asMut() + address, array.data(), sizeof(std::array<char, SIZE>));
     return true;
   }
 };

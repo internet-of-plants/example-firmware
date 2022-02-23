@@ -10,7 +10,7 @@ class Storage {
   iop::Log logger;
 
 public:
-  explicit Storage(iop::LogLevel logLevel) noexcept: logger(logLevel, IOP_STATIC_STR("STORAGE")) {}
+  explicit Storage(iop::LogLevel logLevel) noexcept: logger(logLevel, IOP_STR("STORAGE")) {}
 
   /// Initializes storage memory storage
   static auto setup() noexcept -> void;

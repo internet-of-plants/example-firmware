@@ -81,12 +81,13 @@ class Session {
   friend HTTPClient;
 
 public:
-  auto sendRequest(std::string method, const uint8_t *data, size_t len) noexcept -> std::variant<Response, int>;
   void addHeader(iop::StaticString key, iop::StaticString value) noexcept;
   void addHeader(iop::StaticString key, std::string_view value) noexcept;
   void addHeader(std::string_view key, iop::StaticString value) noexcept;
   void addHeader(std::string_view key, std::string_view value) noexcept;
   void setAuthorization(std::string auth) noexcept;
+  // How to represent that this moves the server out
+  auto sendRequest(std::string method, std::string_view data) noexcept -> std::variant<Response, int>;
   ~Session() noexcept;
 };
 
@@ -105,6 +106,7 @@ public:
   auto begin(std::string_view uri) noexcept -> std::optional<Session>;
 
   // TODO: improve this method name
+  // UNSAFE
   void headersToCollect(const char * headers[], size_t count) noexcept;
 
   friend Session;

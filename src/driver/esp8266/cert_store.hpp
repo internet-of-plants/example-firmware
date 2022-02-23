@@ -3,7 +3,7 @@
 
 namespace driver {
   CertStore::CertStore(CertList list) noexcept: internal(new (std::nothrow) InternalCertStore(list)) {
-  iop_assert(internal, IOP_STATIC_STR("Unable to allocate InternalCertStore"));
+  iop_assert(internal, IOP_STR("Unable to allocate InternalCertStore"));
 }
 CertStore::~CertStore() noexcept {
     delete this->internal;
@@ -14,9 +14,9 @@ auto InternalCertStore::findHashedTA(void *ctx, void *hashed_dn, size_t len) -> 
   IOP_TRACE();
   auto *cs = static_cast<InternalCertStore *>(ctx);
 
-  iop_assert(cs, IOP_STATIC_STR("ctx is nullptr, this is unreachable because if this method is accessible, the ctx is set"));
-  iop_assert(hashed_dn, IOP_STATIC_STR("hashed_dn is nullptr, this is unreachable because it's a static array"));
-  iop_assert(len == hashSize, IOP_STATIC_STR("Invalid hash len"));
+  iop_assert(cs, IOP_STR("ctx is nullptr, this is unreachable because if this method is accessible, the ctx is set"));
+  iop_assert(hashed_dn, IOP_STR("hashed_dn is nullptr, this is unreachable because it's a static array"));
+  iop_assert(len == hashSize, IOP_STR("Invalid hash len"));
 
   const auto &list = cs->certList;
   for (uint16_t i = 0; i < list.count(); i++) {
@@ -25,17 +25,17 @@ auto InternalCertStore::findHashedTA(void *ctx, void *hashed_dn, size_t len) -> 
     if (memcmp_P(hashed_dn, cert.index, hashSize) == 0) {
       const auto size = cert.size;
       auto der = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[size]);
-      iop_assert(der, IOP_STATIC_STR("Cert allocation failed"));
+      iop_assert(der, IOP_STR("Cert allocation failed"));
 
       memcpy_P(der.get(), cert.cert, size);
       cs->x509 = new (std::nothrow) BearSSL::X509List(der.get(), size);
-      iop_assert(cs->x509, IOP_STATIC_STR("OOM"));
+      iop_assert(cs->x509, IOP_STR("OOM"));
       der.reset();
 
       // We can const cast because it's heap allocated
       // It shouldn't be a const function. But the upstream API is just that way
       // NOLINTNEXTLINE cppcoreguidelines-pro-type-const-cast
-      iop_assert(cs->x509, IOP_STATIC_STR("Unable to allocate X509List"));
+      iop_assert(cs->x509, IOP_STR("Unable to allocate X509List"));
       br_x509_trust_anchor *ta = (br_x509_trust_anchor*)cs->x509->getTrustAnchors();
       memcpy_P(ta->dn.data, cert.index, hashSize);
       ta->dn.len = hashSize;

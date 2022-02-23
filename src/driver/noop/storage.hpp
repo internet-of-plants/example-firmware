@@ -3,7 +3,7 @@
 
 namespace driver {
 auto Storage::setup(const uintmax_t size) noexcept -> bool {
-    iop_assert(size > 0, IOP_STATIC_STR("Storage size is zero"));
+    iop_assert(size > 0, IOP_STR("Storage size is zero"));
     
     if (!this->buffer) {
         this->size = size;
@@ -14,6 +14,6 @@ auto Storage::setup(const uintmax_t size) noexcept -> bool {
     return true;
 }
 auto Storage::commit() noexcept -> bool { return true; }
-auto Storage::asRef() const noexcept -> uint8_t const * { if (!buffer) iop_panic(IOP_STATIC_STR("Buffer is nullptr")); return buffer; }
-auto Storage::asMut() noexcept -> uint8_t * { if (!buffer) iop_panic(IOP_STATIC_STR("Buffer is nullptr")); return buffer; }
+auto Storage::asRef() const noexcept -> uint8_t const * { if (!buffer) iop_panic(IOP_STR("Buffer is nullptr")); return buffer; }
+auto Storage::asMut() noexcept -> uint8_t * { if (!buffer) iop_panic(IOP_STR("Buffer is nullptr")); return buffer; }
 }

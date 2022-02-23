@@ -19,7 +19,7 @@ auto Storage::read(const uintmax_t address) const noexcept -> std::optional<uint
 }
 
 auto Storage::write(const uintmax_t address, uint8_t const val) noexcept -> bool {
-    iop_assert(this->buffer, IOP_STATIC_STR("Buffer is nullptr"));
+    iop_assert(this->buffer, IOP_STR("Buffer is nullptr"));
     if (address >= this->size) return false;
     this->asMut()[address] = val;
     return true;

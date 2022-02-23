@@ -9,11 +9,11 @@
 
 namespace driver {
 auto upgrade(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> iop::NetworkStatus {
-  auto *client = iop::data.wifi.client;
-  iop_assert(client, IOP_STATIC_STR("Wifi has been moved out, client is nullptr"));
+  auto *client = iop::wifi.client;
+  iop_assert(client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
   auto ESPhttpUpdate = std::unique_ptr<ESP8266HTTPUpdate>(new (std::nothrow) ESP8266HTTPUpdate());
-  iop_assert(ESPhttpUpdate, IOP_STATIC_STR("Unable to allocate ESP8266HTTPUpdate"));
+  iop_assert(ESPhttpUpdate, IOP_STR("Unable to allocate ESP8266HTTPUpdate"));
   ESPhttpUpdate->setAuthorization(std::string(authorization_header).c_str());
   ESPhttpUpdate->closeConnectionsOnUpdate(true);
   ESPhttpUpdate->rebootOnUpdate(true);
@@ -31,13 +31,13 @@ switch (result) {
 
   case HTTP_UPDATE_FAILED:
     // TODO(pc): properly handle ESPhttpUpdate.getLastError()
-    network.logger().error(IOP_STATIC_STR("Update failed: "),
+    network.logger().error(IOP_STR("Update failed: "),
                        std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
     return iop::NetworkStatus::BROKEN_SERVER;
 }
 
 // TODO(pc): properly handle ESPhttpUpdate.getLastError()
-network.logger().error(IOP_STATIC_STR("Update failed (UNKNOWN): "),
+network.logger().error(IOP_STR("Update failed (UNKNOWN): "),
                     std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
 return iop::NetworkStatus::BROKEN_SERVER;
 }

@@ -33,9 +33,6 @@ void scheduleInterrupt(InterruptEvent ev) noexcept;
 
 /// Extracts first interrupt scheduled. Should be called until a `InterruptEvent::NONE` is returned.
 auto descheduleInterrupt() noexcept -> InterruptEvent;
-
-/// Converts a byte array into a base64 encoded string
-auto base64Encode(const uint8_t *in, const size_t size) noexcept -> std::string;
 } // namespace utils
 
 
@@ -44,17 +41,12 @@ auto base64Encode(const uint8_t *in, const size_t size) noexcept -> std::string;
 /// Must be sent in every request to the monitor server.
 using AuthToken = std::array<char, 64>;
 
-/// Represents an WiFi SSID
-using NetworkName = std::array<char, 32>;
-/// Represents an WiFi password
-using NetworkPassword = std::array<char, 64>;
-
 /// Helpful to pass around references to the cached stored WiFi credentials
 struct WifiCredentials {
-  std::reference_wrapper<NetworkName> ssid;
-  std::reference_wrapper<NetworkPassword> password;
+  std::reference_wrapper<const iop::NetworkName> ssid;
+  std::reference_wrapper<const iop::NetworkPassword> password;
 
-  WifiCredentials(NetworkName &ssid, NetworkPassword &pass) noexcept
+  WifiCredentials(const iop::NetworkName &ssid, const iop::NetworkPassword &pass) noexcept
       : ssid(std::ref(ssid)), password(std::ref(pass)) {}
 };
 

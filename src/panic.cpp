@@ -4,122 +4,109 @@
 #include "loop.hpp"
 #include "api.hpp"
 
-void upgrade() noexcept {
+auto upgrade() noexcept -> void {
   IOP_TRACE();
   const auto token = eventLoop.storage().token();
   if (!token)
     return;
-
   const auto status = eventLoop.api().upgrade(*token);
 
   switch (status) {
   case iop::NetworkStatus::FORBIDDEN:
     // TODO: think about allowing global updates (if you are logged out and panicking get a safe global version and recover from it)
     // This brings security problems of getting your app hijacked and complicates binary signing
-    iop::panicLogger().warn(IOP_STATIC_STR("Invalid auth token, but keeping since at iop_panic"));
+    iop::panicLogger().warn(IOP_STR("Invalid auth token, but keeping since at iop_panic"));
     return;
 
   case iop::NetworkStatus::BROKEN_CLIENT:
-    iop_panic(IOP_STATIC_STR("Api::upgrade internal buffer overflow"));
+    iop_panic(IOP_STR("Api::upgrade internal buffer overflow"));
 
   // Already logged at the network level
   case iop::NetworkStatus::IO_ERROR:
   case iop::NetworkStatus::BROKEN_SERVER:
     // Nothing to be done besides retrying later
 
-  case iop::NetworkStatus::OK: // Cool beans, triggered if no updates are
-                               // available too
+  case iop::NetworkStatus::OK: // Cool beans, triggered if no updates are available too
     return;
   }
 
   const auto str = iop::Network::apiStatusToString(status);
-  iop::panicLogger().error(IOP_STATIC_STR("Bad status, EventLoop::handleInterrupt "), str);
+  iop::panicLogger().error(IOP_STR("Bad status, EventLoop::handleInterrupt "), str);
 }
 
-// TODO(pc): save unique panics to storage
 // TODO(pc): dump stackstrace on iop_panic
 // https://github.com/sticilface/ESPmanager/blob/dce7fc06806a90c179a40eb2d74f4278fffad5b4/src/SaveStack.cpp
-auto reportPanic(const std::string_view &msg, const iop::StaticString &file,
-                 const uint32_t line, const iop::StaticString &func) noexcept
-    -> bool {
+auto reportPanic(const std::string_view &msg, const iop::StaticString &file, const uint32_t line, const iop::StaticString &func) noexcept -> bool {
   IOP_TRACE();
 
   const auto token = eventLoop.storage().token();
   if (!token) {
-    iop::panicLogger().crit(IOP_STATIC_STR("No auth token, unable to report iop_panic"));
+    iop::panicLogger().crit(IOP_STR("No auth token, unable to report iop_panic"));
     return false;
   }
 
-  const PanicData panicData(msg, file, line, func);
-
+  const auto panicData = PanicData(msg, file, line, func);
   const auto status = eventLoop.api().reportPanic(*token, panicData);
 
   switch (status) {
   case iop::NetworkStatus::FORBIDDEN:
-    iop::panicLogger().warn(IOP_STATIC_STR("Invalid auth token, but keeping since at iop_panic"));
+    iop::panicLogger().warn(IOP_STR("Invalid auth token, but keeping since at iop_panic"));
     return false;
 
   case iop::NetworkStatus::BROKEN_CLIENT:
-    // TODO(pc): deal with this, but how? Truncating the msg?
-    // Should we have an endpoint to report this type of error that can't
-    // trigger it?
-    iop::panicLogger().crit(IOP_STATIC_STR("Api::reportPanic client buffer overflow"));
+    iop::panicLogger().crit(IOP_STR("Unreachable as Api::reportPanic truncates the msg until it works"));
     return false;
 
   case iop::NetworkStatus::BROKEN_SERVER:
-    // Nothing we can do besides waiting.
-    iop::panicLogger().crit(IOP_STATIC_STR("Api::reportPanic is broken"));
+    iop::panicLogger().crit(IOP_STR("Api::reportPanic is broken, will retry again later"));
     return false;
 
   case iop::NetworkStatus::IO_ERROR:
-    // Nothing to be done besides retrying later
+    iop::panicLogger().crit(IOP_STR("IO Error: will retry again later"));
     return false;
 
   case iop::NetworkStatus::OK:
-    iop::panicLogger().info(IOP_STATIC_STR("Reported iop_panic to server successfully"));
+    iop::panicLogger().info(IOP_STR("Reported iop_panic to server successfully"));
     return true;
   }
   const auto str = iop::Network::apiStatusToString(status);
-  iop::panicLogger().error(IOP_STATIC_STR("Unexpected status, iop_panic.h: reportPanic: "), str);
+  iop::panicLogger().error(IOP_STR("Unexpected status Api::reportPanic: "), str);
   return false;
 }
 
-static void halt(const std::string_view &msg,
-                 iop::CodePoint const &point) noexcept
-    __attribute__((noreturn));
+static void halt(const std::string_view &msg, iop::CodePoint const &point) noexcept __attribute__((noreturn));
 
-static void halt(const std::string_view &msg,
-                 iop::CodePoint const &point) noexcept {
+static void halt(const std::string_view &msg, iop::CodePoint const &point) noexcept {
   IOP_TRACE();
-  auto reportedPanic = false;
 
   constexpr const uint32_t oneHour = ((uint32_t)60) * 60;
+
+  auto reportedPanic = false;
   while (true) {
     if (!eventLoop.storage().wifi()) {
-      iop::panicLogger().warn(IOP_STATIC_STR("Nothing we can do, no wifi config available"));
+      iop::panicLogger().warn(IOP_STR("Nothing we can do, no wifi config available"));
       break;
     }
 
     if (!eventLoop.storage().token()) {
-      iop::panicLogger().warn(IOP_STATIC_STR("Nothing we can do, no auth token available"));
+      iop::panicLogger().warn(IOP_STR("Nothing we can do, no auth token available"));
       break;
     }
 
-    if (iop::data.wifi.mode() == driver::WiFiMode::OFF) {
-      iop::panicLogger().crit(IOP_STATIC_STR("WiFi is disabled, unable to recover"));
+    if (iop::wifi.mode() == driver::WiFiMode::OFF) {
+      iop::panicLogger().crit(IOP_STR("WiFi is disabled, unable to recover"));
       break;
     }
 
     if (iop::Network::isConnected()) {
       if (!reportedPanic)
-        reportedPanic =
-            reportPanic(msg, point.file(), point.line(), point.func());
+        reportedPanic = reportPanic(msg, point.file(), point.line(), point.func());
 
       // Panic data is lost if report fails but upgrade works
       // Doesn't return if upgrade succeeds
       upgrade();
     } else {
-      iop::panicLogger().warn(IOP_STATIC_STR("No network, unable to recover"));
+      iop::panicLogger().warn(IOP_STR("No network, unable to recover"));
     }
     driver::device.deepSleep(oneHour);
   }
@@ -127,12 +114,8 @@ static void halt(const std::string_view &msg,
   driver::thisThread.halt();
 }
 
-iop::PanicHook hook(iop::PanicHook::defaultViewPanic,
-                           iop::PanicHook::defaultStaticPanic,
-                           iop::PanicHook::defaultEntry, halt);
+iop::PanicHook hook(iop::PanicHook::defaultViewPanic, iop::PanicHook::defaultStaticPanic, iop::PanicHook::defaultEntry, halt);
 
 namespace panic {
-void setup() noexcept {
-  iop::setPanicHook(hook);
-}
+void setup() noexcept { iop::setPanicHook(hook); }
 }

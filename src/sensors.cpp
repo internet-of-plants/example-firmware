@@ -134,18 +134,16 @@ auto Sensors::operator=(Sensors &&other) noexcept -> Sensors & {
   return *this;
 }
 
-Sensors::Sensors(const driver::io::Pin soilResistivityPower,
-          const driver::io::Pin soilTemperature, const driver::io::Pin dht,
-          const uint8_t dhtVersion) noexcept
+Sensors::Sensors(const driver::io::Pin soilResistivityPower, const driver::io::Pin soilTemperature, const driver::io::Pin dht, const uint8_t dhtVersion) noexcept
 #ifdef IOP_SENSORS
       : soilResistivityPower(soilResistivityPower),
         soilTemperatureOneWireBus(new (std::nothrow) OneWire(static_cast<uint8_t>(soilTemperature))),
         soilTemperatureSensor(nullptr),
         airTempAndHumiditySensor(new (std::nothrow) DHT(static_cast<uint8_t>(dht), dhtVersion)) {
-    iop_assert(this->airTempAndHumiditySensor, IOP_STATIC_STR("Unable to allocate air temp and humidity sensor"));
-    iop_assert(this->soilTemperatureOneWireBus, IOP_STATIC_STR("Unable to allocate one wire bus"));
+    iop_assert(this->airTempAndHumiditySensor, IOP_STR("Unable to allocate air temp and humidity sensor"));
+    iop_assert(this->soilTemperatureOneWireBus, IOP_STR("Unable to allocate one wire bus"));
     this->soilTemperatureSensor = new (std::nothrow) DallasTemperature(this->soilTemperatureOneWireBus);
-    iop_assert(this->soilTemperatureSensor, IOP_STATIC_STR("Unable to allocate soil temperature sensor"));
+    iop_assert(this->soilTemperatureSensor, IOP_STR("Unable to allocate soil temperature sensor"));
 }
 #else
 {

@@ -2,6 +2,7 @@
 #define IOP_DRIVER_WIFI
 
 #include "driver/cert_store.hpp"
+#include "driver/string.hpp"
 #include <string>
 #include <array>
 #include <functional>
@@ -43,7 +44,7 @@ struct Wifi {
   WiFiMode mode() const noexcept;
   std::string localIP() const noexcept;
   void wake() const noexcept;
-  std::pair<std::array<char, 32>, std::array<char, 64>> credentials() const noexcept;
+  std::pair<iop::NetworkName, iop::NetworkPassword> credentials() const noexcept;
   bool begin(std::string_view ssid, std::string_view psk) const noexcept;
   void setupAccessPoint() const noexcept;
   void connectAP(std::string_view ssid, std::string_view psk) const noexcept;
@@ -51,7 +52,7 @@ struct Wifi {
   void reconnect() const noexcept;
   void setup(driver::CertStore *certStore) noexcept;
 
-  void onStationGotIP(std::function<void()> f) noexcept;
+  void onConnect(std::function<void()> f) noexcept;
 
   Wifi() noexcept;
   ~Wifi() noexcept;

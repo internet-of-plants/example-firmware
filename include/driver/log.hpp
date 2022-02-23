@@ -204,9 +204,9 @@ private:
                      const StaticString msg,
                      const Args &...args) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::START, IOP_STATIC_STR(""));
+      this->log(level, msg, LogType::START, IOP_STR(""));
     } else {
-      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STR(""));
+      this->log(level, msg, LogType::CONTINUITY, IOP_STR(""));
     }
     this->log_recursive(level, false, args...);
   }
@@ -216,9 +216,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const StaticString msg) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STR("\n"));
+      this->log(level, msg, LogType::STARTEND, IOP_STR("\n"));
     } else {
-      this->log(level, msg, LogType::END, IOP_STATIC_STR("\n"));
+      this->log(level, msg, LogType::END, IOP_STR("\n"));
     }
   }
 
@@ -227,9 +227,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const std::string_view msg, const Args &...args) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::START, IOP_STATIC_STR(""));
+      this->log(level, msg, LogType::START, IOP_STR(""));
     } else {
-      this->log(level, msg, LogType::CONTINUITY, IOP_STATIC_STR(""));
+      this->log(level, msg, LogType::CONTINUITY, IOP_STR(""));
     }
     this->log_recursive(level, false, args...);
   }
@@ -239,9 +239,9 @@ private:
   void log_recursive(const LogLevel &level, const bool first,
                      const std::string_view msg) const noexcept {
     if (first) {
-      this->log(level, msg, LogType::STARTEND, IOP_STATIC_STR("\n"));
+      this->log(level, msg, LogType::STARTEND, IOP_STR("\n"));
     } else {
-      this->log(level, msg, LogType::END, IOP_STATIC_STR("\n"));
+      this->log(level, msg, LogType::END, IOP_STR("\n"));
     }
   }
 

@@ -8,7 +8,9 @@
 #ifdef ARDUINO
 #include "driver/esp8266/runtime.hpp"
 #else
+#ifndef UNIT_TEST
 #include "driver/cpp17/runtime.hpp"
+#endif
 #endif
 #elif defined(IOP_ESP32)
 #include "driver/esp32/runtime.hpp"

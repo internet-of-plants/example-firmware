@@ -45,7 +45,11 @@ public:
 
   auto arg(iop::StaticString arg) const noexcept -> std::optional<std::string>;
   void sendHeader(iop::StaticString name, iop::StaticString value) noexcept;
+
+  // TODO: how can we represent that this moves the value out?
+  // UNSAFE
   void send(uint16_t code, iop::StaticString type, iop::StaticString data) const noexcept;
+
   void sendData(iop::StaticString data) const noexcept;
   void setContentLength(size_t length) noexcept;
   void reset() noexcept;

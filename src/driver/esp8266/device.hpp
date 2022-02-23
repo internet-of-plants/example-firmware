@@ -11,7 +11,7 @@ auto Device::syncNTP() const noexcept -> void {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 }
 auto Device::platform() const noexcept -> iop::StaticString {
-  return IOP_STATIC_STR("ESP8266");
+  return IOP_STR("ESP8266");
 }
 auto Device::vcc() const noexcept -> uint16_t {
     return ESP.getVcc();
@@ -44,13 +44,13 @@ auto Device::deepSleep(const uintmax_t seconds) const noexcept -> void {
   ESP.deepSleep(seconds * 1000000);
   
   // Let's allow the wifi to reconnect
-  iop::data.wifi.wake();
-  iop::data.wifi.setMode(driver::WiFiMode::STATION);
-  iop::data.wifi.reconnect();
+  iop::wifi.wake();
+  iop::wifi.setMode(driver::WiFiMode::STATION);
+  iop::wifi.reconnect();
 }
 auto Device::firmwareMD5() const noexcept -> iop::MD5Hash & {
   static auto md5 = std::optional<iop::MD5Hash>();
-  if (md5.has_value())
+  if (md5)
     return *md5;
     
   IOP_TRACE();
@@ -66,7 +66,7 @@ auto Device::firmwareMD5() const noexcept -> iop::MD5Hash & {
     bufSize /= 2;
     buf = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[bufSize]);
   }
-  iop_assert(bufSize > 128, IOP_STATIC_STR("Too low on RAM to generate MD5 hash"));
+  iop_assert(bufSize > 128, IOP_STR("Too low on RAM to generate MD5 hash"));
   
   MD5Builder builder;
   builder.begin();
@@ -76,7 +76,7 @@ auto Device::firmwareMD5() const noexcept -> iop::MD5Hash & {
       auto *ptr = reinterpret_cast<uint32_t*>(buf.get());
       auto alignedSize = (readBytes + 3) & ~3;
       
-      const auto flashReadFailed = IOP_STATIC_STR("Failed to read from flash to calculate MD5");
+      const auto flashReadFailed = IOP_STR("Failed to read from flash to calculate MD5");
       // What can we do here?
       iop_assert(ESP.flashRead(offset, ptr, alignedSize) == SPI_FLASH_RESULT_OK, flashReadFailed);
 
@@ -92,7 +92,7 @@ auto Device::firmwareMD5() const noexcept -> iop::MD5Hash & {
 }
 auto Device::macAddress() const noexcept -> iop::MacAddress & {
   static auto mac = std::optional<iop::MacAddress>();
-  if (mac.has_value())
+  if (mac)
     return *mac;
 
   IOP_TRACE();

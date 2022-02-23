@@ -2,12 +2,11 @@
 
 // TODO: log restart reason Esp::getResetInfoPtr()
 
-GlobalData globalData;
 namespace driver {
-void setup() noexcept {
+auto setup() noexcept -> void {
   panic::setup();
   network_logger::setup();
   eventLoop.setup();
 }
-void loop() noexcept { eventLoop.loop(); }
+auto loop() noexcept -> void { eventLoop.loop(); }
 }

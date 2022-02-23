@@ -7,14 +7,7 @@
 #include <vector>
 
 namespace iop {
-struct Data {
-  driver::HTTPClient http;
-  driver::Wifi wifi;
-  std::array<char, 32> ssid;
-  Data() noexcept : ssid{0} {}
-};
-
-extern Data data;
+extern driver::Wifi wifi;
 
 /// Higher level error reporting. Lower level is handled by core
 enum class NetworkStatus {
@@ -82,10 +75,12 @@ public:
   auto setup() const noexcept -> void;
   auto uri() const noexcept -> StaticString { return this->uri_; };
 
-  /// Sets the CertStore that will handle TLS requests (find the appropriate cert for the connection)
+  /// Sets static CertStore that will handle TLS requests (find the appropriate cert for the connection)
   ///
   /// Ensure to sync NTP before using TLS (or it will report an invalid date for the certificates)
-  static void setCertStore(::driver::CertStore &store) noexcept;
+  ///
+  /// UB if it Network outlives it
+  static void setCertStore(driver::CertStore &store) noexcept;
 
   /// Sets new firmware update hook for this. Very useful to support upgrades
   /// reported by the network (LAST_VERSION header different than current
