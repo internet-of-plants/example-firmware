@@ -1,6 +1,8 @@
 #include "driver/wifi.hpp"
 #include "driver/esp8266/internal_cert_store.hpp"
 #include "driver/panic.hpp"
+#include "driver/thread.hpp"
+#include "driver/cert_store.hpp"
 #include "ESP8266WiFi.h"
 
 namespace driver { 
@@ -50,15 +52,7 @@ StationStatus Wifi::status() const noexcept {
     iop_panic(IOP_STR("Unreachable status: ").toString() + std::to_string(static_cast<uint8_t>(s)));
 }
 
-void Wifi::setupAccessPoint() const noexcept {
-    // NOLINTNEXTLINE *-avoid-magic-numbers
-    const auto staticIp = IPAddress(192, 168, 1, 1);
-    // NOLINTNEXTLINE *-avoid-magic-numbers
-    const auto mask = IPAddress(255, 255, 255, 0);
-    ::WiFi.softAPConfig(staticIp, staticIp, mask);
-}
-
-std::string Wifi::APIP() const noexcept {
+std::string Wifi::ourAccessPointIp() const noexcept {
     return ::WiFi.softAPIP().toString().c_str();
 }
 
@@ -80,16 +74,7 @@ void Wifi::setMode(WiFiMode mode) const noexcept {
     iop_panic(IOP_STR("Unreachable"));
 }
 
-void Wifi::reconnect() const noexcept {
-    ::WiFi.reconnect();
-    ::WiFi.waitForConnectResult();
-}
-
-std::string Wifi::localIP() const noexcept {
-    return ::WiFi.localIP().toString().c_str();
-}
-
-void Wifi::stationDisconnect() const noexcept {
+void Wifi::disconnectFromAccessPoint() const noexcept {
     IOP_TRACE()
     ETS_UART_INTR_DISABLE(); // NOLINT hicpp-signed-bitwise
     wifi_station_disconnect();
@@ -114,10 +99,6 @@ std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noex
     return std::make_pair(ssid, psk);
 }
 
-void Wifi::wake() const noexcept {
-    ::WiFi.forceSleepWake();
-}
-
 void Wifi::setup(driver::CertStore *certStore) noexcept {
   iop_assert(this->client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
@@ -129,23 +110,22 @@ void Wifi::setup(driver::CertStore *certStore) noexcept {
   ::WiFi.persistent(false);
   ::WiFi.setAutoReconnect(false);
   ::WiFi.setAutoConnect(false);
+
+  this->disconnectFromAccessPoint();
+  ::WiFi.mode(WIFI_STA);
+  driver::thisThread.sleep(1);
 }
 
-WiFiMode Wifi::mode() const noexcept {
-    switch (::WiFi.getMode()) {
-        case WIFI_OFF:
-            return WiFiMode::OFF;
-        case WIFI_STA:
-            return WiFiMode::STATION;
-        case WIFI_AP:
-            return WiFiMode::ACCESS_POINT;
-        case WIFI_AP_STA:
-            return WiFiMode::ACCESS_POINT_AND_STATION;
-    }
-    iop_panic(IOP_STR("Unreachable"));
-}
+void Wifi::enableOurAccessPoint(std::string_view ssid, std::string_view psk) const noexcept {
+    ::WiFi.mode(WIFI_AP_STA);
+    driver::thisThread.sleep(1);
+    
+    // NOLINTNEXTLINE *-avoid-magic-numbers
+    const auto staticIp = IPAddress(192, 168, 1, 1);
+    // NOLINTNEXTLINE *-avoid-magic-numbers
+    const auto mask = IPAddress(255, 255, 255, 0);
+    ::WiFi.softAPConfig(staticIp, staticIp, mask);
 
-void Wifi::connectAP(std::string_view ssid, std::string_view psk) const noexcept {
     String ssidStr;
     ssidStr.concat(ssid.begin(), ssid.length());
     String pskStr;
@@ -153,7 +133,18 @@ void Wifi::connectAP(std::string_view ssid, std::string_view psk) const noexcept
     ::WiFi.softAP(ssidStr, pskStr);
 }
 
-bool Wifi::begin(std::string_view ssid, std::string_view psk) const noexcept {
+auto Wifi::disableOurAccessPoint() const noexcept -> void {
+    ::WiFi.softAPdisconnect();
+    ::WiFi.disconnect();
+    ::WiFi.mode(WIFI_STA);
+    driver::thisThread.sleep(1);
+}
+
+bool Wifi::connectToAccessPoint(std::string_view ssid, std::string_view psk) const noexcept {
+    if (wifi_station_get_connect_status() == STATION_CONNECTING) {
+        this->disconnectFromAccessPoint();
+    }
+
     String ssidStr;
     ssidStr.concat(ssid.begin(), ssid.length());
     String pskStr;

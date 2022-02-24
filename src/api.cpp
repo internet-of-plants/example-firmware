@@ -225,7 +225,7 @@ auto Api::registerLog(const AuthToken &authToken, std::string_view log) const no
 
 // TODO: move upgrade logic to driver
 auto Api::upgrade(const AuthToken &token) const noexcept
-    -> iop::NetworkStatus {
+    -> driver::UpgradeStatus {
   IOP_TRACE();
   this->logger.info(IOP_STR("Upgrading sketch"));
 
@@ -233,11 +233,11 @@ auto Api::upgrade(const AuthToken &token) const noexcept
 }
 #else
 auto Api::upgrade(const AuthToken &token) const noexcept
-    -> iop::NetworkStatus {
+    -> driver::UpgradeStatus {
   (void)*this;
   (void)token;
   IOP_TRACE();
-  return iop::NetworkStatus::OK;
+  return driver::UpgradeStatus::NO_UPGRADE;
 }
 auto Api::reportPanic(const AuthToken &authToken,
                       const PanicData &event) const noexcept

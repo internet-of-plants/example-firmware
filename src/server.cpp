@@ -1,7 +1,6 @@
 #include "server.hpp"
 
 #ifndef IOP_SERVER_DISABLED
-#include "driver/server.hpp"
 #include "driver/wifi.hpp"
 #include "driver/thread.hpp"
 
@@ -125,17 +124,10 @@ auto pageHTMLEnd() -> iop::StaticString {
     "</form></body></html>");
 }
 
-// We use this globals to share messages from the callbacks
-static std::optional<std::pair<std::string, std::string>> credentialsWifi;
-static std::optional<std::pair<std::string, std::string>> credentialsIop;
-
-static driver::HttpServer server;
-static driver::CaptivePortal dnsServer;
-
-void CredentialsServer::setup() const noexcept {
+auto CredentialsServer::setup() noexcept -> void {
   IOP_TRACE();
-  server.on(IOP_STR("/favicon.ico"), [](driver::HttpConnection &conn, iop::Log const &logger) { conn.send(404, IOP_STR("text/plain"), IOP_STR("")); (void) logger; });
-  server.on(IOP_STR("/submit"), [](driver::HttpConnection &conn, iop::Log const &logger) {
+  this->server.on(IOP_STR("/favicon.ico"), [](driver::HttpConnection &conn, iop::Log const &logger) { conn.send(404, IOP_STR("text/plain"), IOP_STR("")); (void) logger; });
+  this->server.on(IOP_STR("/submit"), [this](driver::HttpConnection &conn, iop::Log const &logger) {
     IOP_TRACE();
     logger.debug(IOP_STR("Received credentials form"));
 
@@ -144,7 +136,7 @@ void CredentialsServer::setup() const noexcept {
     const auto psk = conn.arg(IOP_STR("password"));
     if (wifi && ssid && psk) {
       logger.debug(IOP_STR("SSID: "), *ssid);
-      credentialsWifi = std::make_pair(*ssid, *psk);
+      this->credentialsWifi = std::make_pair(*ssid, *psk);
     }
 
     const auto iop = conn.arg(IOP_STR("iop"));
@@ -152,14 +144,14 @@ void CredentialsServer::setup() const noexcept {
     const auto password = conn.arg(IOP_STR("iopPassword"));
     if (iop && email && password) {
       logger.debug(IOP_STR("Email: "), *email);
-      credentialsIop = std::make_pair(*email, *password);
+      this->credentialsIop = std::make_pair(*email, *password);
     }
 
     conn.sendHeader(IOP_STR("Location"), IOP_STR("/"));
     conn.send(302, IOP_STR("text/plain"), IOP_STR(""));
   });
 
-  server.onNotFound([](driver::HttpConnection &conn, iop::Log const &logger) {
+  this->server.onNotFound([](driver::HttpConnection &conn, iop::Log const &logger) {
     IOP_TRACE();
     logger.info(IOP_STR("Serving captive portal"));
 
@@ -185,42 +177,37 @@ void CredentialsServer::setup() const noexcept {
   });
 }
 
-void CredentialsServer::start() noexcept {
+auto CredentialsServer::start() noexcept -> void {
   IOP_TRACE();
   if (!this->isServerOpen) {
     this->isServerOpen = true;
     this->logger.info(IOP_STR("Setting our own wifi access point"));
 
-    iop::wifi.setMode(driver::WiFiMode::ACCESS_POINT_AND_STATION);
-    driver::thisThread.sleep(1);
-    iop::wifi.setupAccessPoint();
-
     {
       const auto hash = iop::hashString(iop::to_view(driver::device.macAddress()));
       const auto ssid = std::string("iop-") + std::to_string(hash);
 
-      iop::wifi.connectAP(ssid, IOP_STR("le$memester#passwordz").toString());
+      iop::wifi.enableOurAccessPoint(ssid, IOP_STR("le$memester#passwordz").toString());
     }
 
     // Makes it a captive portal (redirects all wifi trafic to it)
-    dnsServer.start();
-    server.begin();
+    this->dnsServer.start();
+    this->server.begin();
 
-    this->logger.info(IOP_STR("Opened captive portal: "), iop::wifi.APIP());
+    this->logger.info(IOP_STR("Opened captive portal: "), iop::wifi.ourAccessPointIp());
   }
 }
 
-void CredentialsServer::close() noexcept {
+auto CredentialsServer::close() noexcept -> void {
   IOP_TRACE();
   if (this->isServerOpen) {
     this->logger.debug(IOP_STR("Closing captive portal"));
     this->isServerOpen = false;
 
-    dnsServer.close();
-    server.close();
+    this->dnsServer.close();
+    this->server.close();
 
-    iop::wifi.setMode(driver::WiFiMode::STATION);
-    driver::thisThread.sleep(1);
+    iop::wifi.disableOurAccessPoint();
   }
 }
 
@@ -234,12 +221,12 @@ auto CredentialsServer::serve(const Api &api) noexcept -> std::optional<AuthToke
 
   const auto isConnected = iop::Network::isConnected();
 
-  if (credentialsWifi) {
-    eventLoop.connect(credentialsWifi->first, credentialsWifi->second);
+  if (this->credentialsWifi) {
+    eventLoop.connect(this->credentialsWifi->first, this->credentialsWifi->second);
   }
   
-  if (isConnected && credentialsIop) {
-    auto tok = eventLoop.authenticate(credentialsIop->first, credentialsIop->second, api);
+  if (isConnected && this->credentialsIop) {
+    auto tok = eventLoop.authenticate(this->credentialsIop->first, this->credentialsIop->second, api);
     if (tok)
       return tok;
 
@@ -257,8 +244,8 @@ auto CredentialsServer::serve(const Api &api) noexcept -> std::optional<AuthToke
 
   // Give processing time to the servers
   this->logger.trace(IOP_STR("Serve captive portal"));
-  dnsServer.handleClient();
-  server.handleClient();
+  this->dnsServer.handleClient();
+  this->server.handleClient();
   return std::nullopt;
 }
 #else
@@ -269,7 +256,7 @@ auto CredentialsServer::serve(const Api &api) noexcept
   (void)api;
   return std::optional<AuthToken>();
 }
-void CredentialsServer::setup() const noexcept {
+auto CredentialsServer::setup() noexcept -> void {
   (void)*this;
   IOP_TRACE();
 }

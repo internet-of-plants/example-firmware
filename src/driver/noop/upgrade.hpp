@@ -1,10 +1,11 @@
 #include "driver/upgrade.hpp"
+#include "driver/network.hpp"
 
 namespace driver {
-auto upgrade(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> iop::NetworkStatus {
+auto Upgrade::run(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> driver::UpgradeStatus {
     (void) network;
     (void) path;
     (void) authorization_header;
-    return iop::NetworkStatus::OK;
+    return driver::UpgradeStatus::NO_UPGRADE;
 }
 } // namespace driver

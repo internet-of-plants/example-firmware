@@ -4,18 +4,18 @@
 #include "driver/thread.hpp"
 #include "configuration.hpp"
 
-static volatile iop::time resetStateTime = 0;
+static volatile iop::time::milliseconds resetStateTime = 0;
 
 void IOP_RAM buttonChanged() noexcept {
   IOP_TRACE();
 
   constexpr const uint32_t fifteenSeconds = 15000;
   if (driver::gpio.digitalRead(config::factoryResetButton) == driver::io::Data::HIGH) {
-    resetStateTime = driver::thisThread.now();
+    resetStateTime = driver::thisThread.timeRunning();
     
     if (config::logLevel >= iop::LogLevel::INFO)
       iop::Log::print("[INFO] RESET: Press FACTORY_RESET button for 15 seconds more to factory reset the device\n", iop::LogLevel ::INFO, iop::LogType::STARTEND);
-  } else if (resetStateTime + fifteenSeconds < driver::thisThread.now()) {
+  } else if (resetStateTime + fifteenSeconds < driver::thisThread.timeRunning()) {
       utils::scheduleInterrupt(InterruptEvent::FACTORY_RESET);
 
       if (config::logLevel >= iop::LogLevel::INFO)

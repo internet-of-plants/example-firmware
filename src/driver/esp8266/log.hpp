@@ -12,8 +12,8 @@ void logSetup(const iop::LogLevel &level) noexcept {
         Serial.setDebugOutput(true);
 
     constexpr const uint32_t twoSec = 2 * 1000;
-    const auto end = driver::thisThread.now() + twoSec;
-    while (!Serial && driver::thisThread.now() < end)
+    const auto end = driver::thisThread.timeRunning() + twoSec;
+    while (!Serial && driver::thisThread.timeRunning() < end)
         driver::thisThread.yield();
 }
 void logPrint(const iop::StaticString msg) noexcept {

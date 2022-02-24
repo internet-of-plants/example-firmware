@@ -22,14 +22,14 @@ private:
   Storage storage_;
   Sensors sensors;
 
-  iop::time nextMeasurement;
-  iop::time nextYieldLog;
-  iop::time nextNTPSync;
-  iop::time nextHandleConnectionLost;
+  iop::time::milliseconds nextMeasurement;
+  iop::time::milliseconds nextYieldLog;
+  iop::time::milliseconds nextNTPSync;
+  iop::time::milliseconds nextHandleConnectionLost;
 
-  iop::time nextTryStorageWifiCredentials;
-  iop::time nextTryHardcodedWifiCredentials;
-  iop::time nextTryHardcodedIopCredentials;
+  iop::time::milliseconds nextTryStorageWifiCredentials;
+  iop::time::milliseconds nextTryHardcodedWifiCredentials;
+  iop::time::milliseconds nextTryHardcodedIopCredentials;
 
 public:
   Api const & api() const noexcept { return this->api_; }

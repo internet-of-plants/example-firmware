@@ -12,26 +12,25 @@ auto upgrade() noexcept -> void {
   const auto status = eventLoop.api().upgrade(*token);
 
   switch (status) {
-  case iop::NetworkStatus::FORBIDDEN:
+  case driver::UpgradeStatus::FORBIDDEN:
     // TODO: think about allowing global updates (if you are logged out and panicking get a safe global version and recover from it)
     // This brings security problems of getting your app hijacked and complicates binary signing
     iop::panicLogger().warn(IOP_STR("Invalid auth token, but keeping since at iop_panic"));
     return;
 
-  case iop::NetworkStatus::BROKEN_CLIENT:
+  case driver::UpgradeStatus::BROKEN_CLIENT:
     iop_panic(IOP_STR("Api::upgrade internal buffer overflow"));
 
   // Already logged at the network level
-  case iop::NetworkStatus::IO_ERROR:
-  case iop::NetworkStatus::BROKEN_SERVER:
+  case driver::UpgradeStatus::IO_ERROR:
+  case driver::UpgradeStatus::BROKEN_SERVER:
     // Nothing to be done besides retrying later
 
-  case iop::NetworkStatus::OK: // Cool beans, triggered if no updates are available too
+  case driver::UpgradeStatus::NO_UPGRADE: // Cool beans
     return;
   }
 
-  const auto str = iop::Network::apiStatusToString(status);
-  iop::panicLogger().error(IOP_STR("Bad status, EventLoop::handleInterrupt "), str);
+  iop::panicLogger().error(IOP_STR("Bad status, panic::upgrade"));
 }
 
 // TODO(pc): dump stackstrace on iop_panic
@@ -69,8 +68,7 @@ auto reportPanic(const std::string_view &msg, const iop::StaticString &file, con
     iop::panicLogger().info(IOP_STR("Reported iop_panic to server successfully"));
     return true;
   }
-  const auto str = iop::Network::apiStatusToString(status);
-  iop::panicLogger().error(IOP_STR("Unexpected status Api::reportPanic: "), str);
+  iop::panicLogger().error(IOP_STR("Unexpected status Api::reportPanic"));
   return false;
 }
 
@@ -90,11 +88,6 @@ static void halt(const std::string_view &msg, iop::CodePoint const &point) noexc
 
     if (!eventLoop.storage().token()) {
       iop::panicLogger().warn(IOP_STR("Nothing we can do, no auth token available"));
-      break;
-    }
-
-    if (iop::wifi.mode() == driver::WiFiMode::OFF) {
-      iop::panicLogger().crit(IOP_STR("WiFi is disabled, unable to recover"));
       break;
     }
 

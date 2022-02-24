@@ -2,6 +2,8 @@
 #define IOP_DRIVER_NETWORK_HPP
 
 #include "driver/client.hpp"
+#include "driver/wifi.hpp"
+#include "driver/cert_store.hpp"
 #include "driver/log.hpp"
 
 #include <vector>
@@ -104,10 +106,8 @@ public:
   auto httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int>;
 
   /// Fetches firmware upgrade from the network
-  auto upgrade(StaticString path, std::string_view token) const noexcept -> NetworkStatus;
+  auto upgrade(StaticString path, std::string_view token) const noexcept -> driver::UpgradeStatus;
 
-  /// Allows properly logging network status
-  static auto apiStatusToString(const NetworkStatus &status) noexcept -> StaticString;
   /// Extracts a network status from the raw response
   auto apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus>;
 

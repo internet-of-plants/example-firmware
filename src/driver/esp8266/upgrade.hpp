@@ -1,6 +1,7 @@
 #include "driver/upgrade.hpp"
 #include "driver/client.hpp"
 #include "driver/panic.hpp"
+#include "driver/network.hpp"
 
 #include <memory>
 
@@ -8,7 +9,7 @@
 
 
 namespace driver {
-auto upgrade(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> iop::NetworkStatus {
+auto Upgrade::run(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> driver::UpgradeStatus {
   auto *client = iop::wifi.client;
   iop_assert(client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
@@ -21,24 +22,24 @@ auto upgrade(const iop::Network &network, const iop::StaticString path, const st
 
   auto route = String();
   route.concat(network.uri().toString().c_str(), network.uri().length());
-route.concat(path.toString().c_str(), path.length());
+  route.concat(path.toString().c_str(), path.length());
   const auto result = ESPhttpUpdate->update(*client, route, "");
 
 switch (result) {
   case HTTP_UPDATE_NO_UPDATES:
   case HTTP_UPDATE_OK:
-    return iop::NetworkStatus::OK;
+    return driver::UpgradeStatus::NO_UPGRADE;
 
   case HTTP_UPDATE_FAILED:
     // TODO(pc): properly handle ESPhttpUpdate.getLastError()
     network.logger().error(IOP_STR("Update failed: "),
                        std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
-    return iop::NetworkStatus::BROKEN_SERVER;
+    return driver::UpgradeStatus::BROKEN_SERVER;
 }
 
 // TODO(pc): properly handle ESPhttpUpdate.getLastError()
 network.logger().error(IOP_STR("Update failed (UNKNOWN): "),
                     std::string_view(ESPhttpUpdate->getLastErrorString().c_str()));
-return iop::NetworkStatus::BROKEN_SERVER;
+return driver::UpgradeStatus::BROKEN_SERVER;
 }
 } // namespace driver

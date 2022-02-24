@@ -34,7 +34,7 @@ auto panicHandler(StaticString msg, CodePoint const &point) noexcept -> void {
   hook.halt(msg_, point);
   driver::thisThread.abort();
 }
-auto takePanicHook() noexcept -> PanicHook -> void {
+auto takePanicHook() noexcept -> PanicHook {
   auto old = hook;
   hook = defaultHook;
   return old;

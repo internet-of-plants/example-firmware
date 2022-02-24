@@ -2,6 +2,7 @@
 #define IOP_SERVER_HPP
 
 #include "driver/log.hpp"
+#include "driver/server.hpp"
 #include "utils.hpp"
 #include <optional>
 
@@ -25,24 +26,29 @@ class Api;
 class CredentialsServer {
 private:
   iop::Log logger;
-
+  
+  driver::HttpServer server;
+  driver::CaptivePortal dnsServer;
   bool isServerOpen = false;
 
+  std::optional<std::pair<std::string, std::string>> credentialsIop;
+  std::optional<std::pair<std::string, std::string>> credentialsWifi;
+
   /// Internal method to initialize the credential server, if not running
-  void start() noexcept;
+  auto start() noexcept -> void;
 
 public:
   explicit CredentialsServer(const iop::LogLevel &logLevel) noexcept: logger(logLevel, IOP_STR("SERVER")) {}
 
   /// Setups everything the Captive Portal needs
-  void setup() const noexcept;
+  auto setup() noexcept -> void;
 
   /// Serves the captive portal and handles each user connected to each,
   /// authenticating to the wifi and the monitor server when possible
   auto serve(const Api &api) noexcept -> std::optional<AuthToken>;
 
   /// Closes the Captive Portal if it's still open
-  void close() noexcept;
+  auto close() noexcept -> void;
 };
 
 #include "utils.hpp"

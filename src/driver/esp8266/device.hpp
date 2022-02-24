@@ -3,6 +3,7 @@
 #include "driver/panic.hpp"
 #include "sys/pgmspace.h"
 #include "ESP8266HTTPClient.h"
+#include "ESP8266WiFi.h"
 #include <umm_malloc/umm_heap_select.h>
 
 namespace driver {
@@ -44,9 +45,10 @@ auto Device::deepSleep(const uintmax_t seconds) const noexcept -> void {
   ESP.deepSleep(seconds * 1000000);
   
   // Let's allow the wifi to reconnect
-  iop::wifi.wake();
-  iop::wifi.setMode(driver::WiFiMode::STATION);
-  iop::wifi.reconnect();
+  ::WiFi.forceSleepWake();
+  ::WiFi.mode(WIFI_STA);
+  ::WiFi.reconnect();
+  ::WiFi.waitForConnectResult();
 }
 auto Device::firmwareMD5() const noexcept -> iop::MD5Hash & {
   static auto md5 = std::optional<iop::MD5Hash>();

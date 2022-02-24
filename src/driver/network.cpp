@@ -14,8 +14,8 @@ driver::Wifi wifi;
 auto Network::logger() const noexcept -> const Log & {
   return this->logger_;
 }
-auto Network::upgrade(StaticString path, std::string_view token) const noexcept -> NetworkStatus {
-  return driver::upgrade(*this, path, token);
+auto Network::upgrade(StaticString path, std::string_view token) const noexcept -> driver::UpgradeStatus {
+  return driver::Upgrade::run(*this, path, token);
 }
 void UpgradeHook::defaultHook() noexcept { IOP_TRACE(); }
 void Network::setCertStore(driver::CertStore &store) noexcept {
@@ -36,7 +36,7 @@ auto Network::isConnected() noexcept -> bool {
 
 void Network::disconnect() noexcept {
   IOP_TRACE();
-  return iop::wifi.stationDisconnect();
+  return iop::wifi.disconnectFromAccessPoint();
 }
 
 auto Network::httpPost(std::string_view token, const StaticString path, std::string_view data) const noexcept -> std::variant<Response, int> {
@@ -49,23 +49,6 @@ auto Network::httpPost(StaticString path, std::string_view data) const noexcept 
 
 auto Network::httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int> {
   return this->httpRequest(HttpMethod::GET, token, path, data);
-}
-
-auto Network::apiStatusToString(const NetworkStatus &status) noexcept -> StaticString {
-  IOP_TRACE();
-  switch (status) {
-  case NetworkStatus::IO_ERROR:
-    return IOP_STR("IO_ERROR");
-  case NetworkStatus::BROKEN_CLIENT:
-    return IOP_STR("BROKEN_CLIENT");
-  case NetworkStatus::BROKEN_SERVER:
-    return IOP_STR("BROKEN_SERVER");
-  case NetworkStatus::OK:
-    return IOP_STR("OK");
-  case NetworkStatus::FORBIDDEN:
-    return IOP_STR("FORBIDDEN");
-  }
-  return IOP_STR("UNKNOWN");
 }
 
 auto Network::apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus> {
@@ -204,7 +187,7 @@ auto Network::httpRequest(const HttpMethod method_,
     }
   }
   session.addHeader(IOP_STR("VCC"), std::to_string(driver::device.vcc()));
-  session.addHeader(IOP_STR("TIME_RUNNING"), std::to_string(driver::thisThread.now()));
+  session.addHeader(IOP_STR("TIME_RUNNING"), std::to_string(driver::thisThread.timeRunning()));
   session.addHeader(IOP_STR("ORIGIN"), this->uri());
   session.addHeader(IOP_STR("DRIVER"), driver::device.platform());
 
@@ -269,10 +252,6 @@ void Network::setup() const noexcept {
   http.headersToCollect(headers, 1);
 
   iop::wifi.setup(maybeCertStore);
-  iop::Network::disconnect();
-  iop::wifi.setMode(driver::WiFiMode::STATION);
-
-  driver::thisThread.sleep(1);
 }
 
 static auto methodToString(const HttpMethod &method) noexcept -> StaticString {

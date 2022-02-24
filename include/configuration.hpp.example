@@ -21,7 +21,7 @@ constexpr static driver::io::Pin factoryResetButton = driver::io::Pin::D1;
 constexpr static uint8_t dhtVersion = 22; // DHT22
 
 /// Time between measurements
-constexpr static iop::time interval = 180 * 1000;
+constexpr static iop::time::milliseconds interval = 180 * 1000;
 
 /// The fields bellow should be empty. Filling them will be counter productive
 /// It's only here to speedup some debugging

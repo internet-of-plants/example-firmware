@@ -48,7 +48,7 @@ auto EventLoop::loop() noexcept -> void {
         this->handleInterrupt(ev, authToken);
         driver::thisThread.yield();
     }
-    const auto now = driver::thisThread.now();
+    const auto now = driver::thisThread.timeRunning();
     const auto isConnected = iop::Network::isConnected();
 
     if (isConnected && authToken)
@@ -97,7 +97,7 @@ auto EventLoop::handleNotConnected() noexcept -> void {
   // for more resiliency) - or during factory reset
   constexpr const uint32_t oneMinute = 60 * 1000;
 
-  const auto now = driver::thisThread.now();
+  const auto now = driver::thisThread.timeRunning();
   const auto &wifi = this->storage().wifi();
   const auto isConnected = iop::Network::isConnected();
 
@@ -143,7 +143,7 @@ auto EventLoop::handleNotConnected() noexcept -> void {
 auto EventLoop::handleIopCredentials() noexcept -> void {
   IOP_TRACE();
 
-  const auto now = driver::thisThread.now();
+  const auto now = driver::thisThread.timeRunning();
 
   if (config::iopEmail() && config::iopPassword() && this->nextTryHardcodedIopCredentials <= now) {
     this->nextTryHardcodedIopCredentials = now + intervalTryHardcodedIopCredentialsMillis;
@@ -184,24 +184,23 @@ auto EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
       if (token) {
         const auto status = this->api().upgrade(*token);
         switch (status) {
-        case iop::NetworkStatus::FORBIDDEN:
+        case driver::UpgradeStatus::FORBIDDEN:
           this->logger.warn(IOP_STR("Invalid auth token, but keeping since at OTA"));
           return;
 
-        case iop::NetworkStatus::BROKEN_CLIENT:
+        case driver::UpgradeStatus::BROKEN_CLIENT:
           iop_panic(IOP_STR("Api::upgrade internal buffer overflow"));
 
         // Already logged at the network level
-        case iop::NetworkStatus::IO_ERROR:
-        case iop::NetworkStatus::BROKEN_SERVER:
+        case driver::UpgradeStatus::IO_ERROR:
+        case driver::UpgradeStatus::BROKEN_SERVER:
           // Nothing to be done besides retrying later
 
-        case iop::NetworkStatus::OK: // Cool beans
+        case driver::UpgradeStatus::NO_UPGRADE: // Shouldn't happen but ok
           return;
         }
 
-        const auto str = iop::Network::apiStatusToString(status);
-        this->logger.error(IOP_STR("Bad status, EventLoop::handleInterrupt "), str);
+        this->logger.error(IOP_STR("Bad status, EventLoop::handleInterrupt"));
       } else {
         this->logger.error(IOP_STR("Upgrade expected, but no auth token available"));
       }
@@ -210,9 +209,8 @@ auto EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
       break;
     case InterruptEvent::ON_CONNECTION:
 #ifdef IOP_ONLINE
-      const auto ip = iop::wifi.localIP();
       const auto status = this->statusToString(iop::wifi.status());
-      this->logger.debug(IOP_STR("WiFi connected ("), ip, IOP_STR("): "), status.value_or(IOP_STR("BadData")));
+      this->logger.debug(IOP_STR("WiFi connected: "), status.value_or(IOP_STR("BadData")));
 
       const auto [ssid, psk] = iop::wifi.credentials();
 
@@ -260,8 +258,7 @@ auto EventLoop::handleMeasurements(const AuthToken &token) noexcept -> void {
       return;
     }
 
-    const auto statusStr = iop::Network::apiStatusToString(status);
-    this->logger.error(IOP_STR("Unexpected status, EventLoop::handleMeasurements: "), statusStr);
+    this->logger.error(IOP_STR("Unexpected status, EventLoop::handleMeasurements"));
 }
 
 
@@ -269,11 +266,7 @@ auto EventLoop::connect(std::string_view ssid, std::string_view password) const 
   IOP_TRACE();
   this->logger.info(IOP_STR("Connect: "), ssid);
 
-  if (iop::wifi.status() == driver::StationStatus::CONNECTING) {
-    iop::wifi.stationDisconnect();
-  }
-
-  if (!iop::wifi.begin(ssid, password)) {
+  if (!iop::wifi.connectToAccessPoint(ssid, password)) {
     this->logger.error(IOP_STR("Wifi authentication timed out"));
     return;
   }
@@ -301,7 +294,7 @@ auto EventLoop::authenticate(std::string_view username, std::string_view passwor
 
     switch (status) {
     case iop::NetworkStatus::FORBIDDEN:
-      this->logger.error(IOP_STR("Invalid IoP credentials ("), iop::Network::apiStatusToString(status), IOP_STR("): "), username);
+      this->logger.error(IOP_STR("Invalid IoP credentials: "), username);
       return std::nullopt;
 
     case iop::NetworkStatus::BROKEN_CLIENT:
@@ -318,8 +311,7 @@ auto EventLoop::authenticate(std::string_view username, std::string_view passwor
       iop_panic(IOP_STR("Unreachable"));
     }
 
-    const auto str = iop::Network::apiStatusToString(status);
-    this->logger.crit(IOP_STR("CredentialsServer::authenticate bad status: "), str);
+    this->logger.crit(IOP_STR("CredentialsServer::authenticate bad status"));
     return std::nullopt;
 
   } else if (auto *token = std::get_if<AuthToken>(&authToken)) {

@@ -1,8 +1,9 @@
 #ifndef IOP_DRIVER_WIFI
 #define IOP_DRIVER_WIFI
 
-#include "driver/cert_store.hpp"
 #include "driver/string.hpp"
+#include "driver/client.hpp"
+#include "driver/upgrade.hpp"
 #include <string>
 #include <array>
 #include <functional>
@@ -31,28 +32,39 @@ enum class StationStatus {
   GOT_IP
 };
 
-struct Wifi {
+class CertStore;
+
+class Wifi {
 #ifdef IOP_ESP8266
   driver::NetworkClientPtr client;
 #endif
+public:
+  // Initializes wifi configuration, attaches TLS certificates storage to underlying HTTP code
+  auto setup(driver::CertStore *certStore) noexcept -> void;
 
   // TODO: document this
   
-  StationStatus status() const noexcept;
-  void stationDisconnect() const noexcept;
-  void setMode(WiFiMode mode) const noexcept;
-  WiFiMode mode() const noexcept;
-  std::string localIP() const noexcept;
-  void wake() const noexcept;
-  std::pair<iop::NetworkName, iop::NetworkPassword> credentials() const noexcept;
-  bool begin(std::string_view ssid, std::string_view psk) const noexcept;
-  void setupAccessPoint() const noexcept;
-  void connectAP(std::string_view ssid, std::string_view psk) const noexcept;
-  std::string APIP() const noexcept;
-  void reconnect() const noexcept;
-  void setup(driver::CertStore *certStore) noexcept;
+  // TODO: maybe can be remoed. Mostly used to check if connected, or to display the status in debugging data
+  auto status() const noexcept -> StationStatus;
+  // TODO: Could be removed with a little work
+  auto setMode(WiFiMode mode) const noexcept -> void;
 
-  void onConnect(std::function<void()> f) noexcept;
+  // TODO: those next two can be removed by a driver interrupt kind that can handle robust functions
+  // So a runtime called at every event-loop. So that we attach a handler that receives the credentials
+  // Instead of scheduling the run to then retrieve the credentials to then store then, abstract this from user
+  auto credentials() const noexcept -> std::pair<iop::NetworkName, iop::NetworkPassword>;
+  // This should be a very short function, as if it was an interrupt
+  // Used only to schedule the execution of the more complicated function
+  // in the next event-loop run
+  auto onConnect(std::function<void()> f) noexcept -> void;
+
+  auto connectToAccessPoint(std::string_view ssid, std::string_view psk) const noexcept -> bool;
+  // TODO: Remove this. This is only used to disconnect after a factory reset, is it needed?
+  auto disconnectFromAccessPoint() const noexcept -> void;
+
+  auto enableOurAccessPoint(std::string_view ssid, std::string_view psk) const noexcept -> void;
+  auto disableOurAccessPoint() const noexcept -> void;
+  auto ourAccessPointIp() const noexcept -> std::string;
 
   Wifi() noexcept;
   ~Wifi() noexcept;
@@ -60,6 +72,9 @@ struct Wifi {
   Wifi(Wifi &&other) noexcept;
   auto operator=(Wifi &other) noexcept -> Wifi & = delete;
   auto operator=(Wifi &&other) noexcept -> Wifi &;
+
+  friend HTTPClient;
+  friend Upgrade;
 };
 }
 

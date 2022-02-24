@@ -84,7 +84,7 @@ public:
   /// IO_ERROR: problems with connection, retry later?
   /// BROKEN_CLIENT: unreachable as this route doesn't use the payload buffer
   /// BROKEN_SERVER: must wait until server is fixed
-  auto upgrade(const AuthToken &token) const noexcept -> iop::NetworkStatus;
+  auto upgrade(const AuthToken &token) const noexcept -> driver::UpgradeStatus;
 
 private:
   using JsonCallback = std::function<void(JsonDocument &)>;
