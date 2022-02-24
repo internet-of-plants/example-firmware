@@ -39,12 +39,10 @@ auto Storage::token() const noexcept -> std::optional<std::reference_wrapper<con
   if (!flag || *flag != usedAuthTokenEEPROMFlag)
     return std::nullopt;
 
-  const auto currAuthToken = driver::storage.read<sizeof(AuthToken)>(authTokenIndex + 1);
-  iop_assert(currAuthToken, IOP_STR("Failed to read AuthToken from storage"));
+  const auto maybeAuthToken = driver::storage.read<sizeof(AuthToken)>(authTokenIndex + 1);
+  iop_assert(maybeAuthToken, IOP_STR("Failed to read AuthToken from storage"));
+  authToken = *maybeAuthToken;
   
-  authToken.fill('\0');
-  memcpy(authToken.data(), &*currAuthToken, sizeof(AuthToken));
-
   const auto tok = iop::to_view(authToken);
   // AuthToken must be printable US-ASCII (to be stored in HTTP headers))
   if (!iop::isAllPrintable(tok) || tok.length() != 64) {
@@ -82,7 +80,7 @@ void Storage::setToken(const AuthToken &token) const noexcept {
     const auto tok = driver::storage.read<sizeof(AuthToken)>(authTokenIndex + 1);
     iop_assert(tok, IOP_STR("Failed to read AuthToken from storage"));
 
-    if (std::memcmp(&*tok, token.begin(), sizeof(AuthToken)) == 0) {
+    if (*tok == token) {
       this->logger.debug(IOP_STR("Auth token already stored in storage"));
       return;
     }
@@ -105,18 +103,14 @@ auto Storage::wifi() const noexcept -> std::optional<std::reference_wrapper<cons
   if (!flag || *flag != usedWifiConfigEEPROMFlag)
     return std::nullopt;
 
-  const auto networkName = driver::storage.read<sizeof(iop::NetworkName)>(wifiConfigIndex + 1);
-  const auto networkPassword = driver::storage.read<sizeof(iop::NetworkPassword)>(wifiConfigIndex + 1);
-  iop_assert(networkName, IOP_STR("Failed to read SSID from storage"));
-  iop_assert(networkPassword, IOP_STR("Failed to read PSK from storage"));
+  const auto maybeSsid = driver::storage.read<sizeof(iop::NetworkName)>(wifiConfigIndex + 1);
+  const auto maybePsk = driver::storage.read<sizeof(iop::NetworkPassword)>(wifiConfigIndex + 1);
+  iop_assert(maybeSsid, IOP_STR("Failed to read SSID from storage"));
+  iop_assert(maybePsk, IOP_STR("Failed to read PSK from storage"));
 
-  // We treat wifi credentials as a blob instead of worrying about encoding
-  ssid.fill('\0');
-  psk.fill('\0');
+  ssid = *maybeSsid;
+  psk = *maybePsk;
   
-  memcpy(ssid.data(), &*networkName, sizeof(iop::NetworkName));
-  memcpy(psk.data(), &*networkPassword, sizeof(iop::NetworkPassword));
-
   const auto ssidStr = iop::scapeNonPrintable(iop::to_view(ssid));
   this->logger.trace(IOP_STR("Found network credentials: "), iop::to_view(ssidStr));
   const auto creds = WifiCredentials(ssid, psk);
@@ -153,8 +147,7 @@ void Storage::setWifi(const WifiCredentials &config) const noexcept {
     
     // Theoretically SSIDs can have a nullptr inside of it, but currently ESP8266 gives us random garbage after the first '\0' instead of zeroing the rest
     // So we do not accept SSIDs with a nullptr in the middle
-    if (std::strncmp(&(*networkName)[0], config.ssid.get().begin(), sizeof(iop::NetworkName)) == 0
-        && std::strncmp(&(*networkPassword)[0], config.password.get().begin(), sizeof(iop::NetworkPassword)) == 0) {
+    if (iop::to_view(*networkName) == iop::to_view(config.ssid.get()) && iop::to_view(*networkPassword) == iop::to_view(config.password.get())) {
       this->logger.debug(IOP_STR("Wifi Credentials already stored in storage"));
       return;
     }

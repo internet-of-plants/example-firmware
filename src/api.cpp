@@ -223,7 +223,6 @@ auto Api::registerLog(const AuthToken &authToken, std::string_view log) const no
 #endif
 }
 
-// TODO: move upgrade logic to driver
 auto Api::upgrade(const AuthToken &token) const noexcept
     -> driver::UpgradeStatus {
   IOP_TRACE();

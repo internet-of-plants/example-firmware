@@ -11,7 +11,7 @@ void authToken() {
   token.fill('A');
   
   storage.setToken(token);
-  TEST_ASSERT(memcmp(storage.token().value().get().begin(), token.begin(), sizeof(token)) == 0);
+  TEST_ASSERT(storage.token().value().get() == token);
   storage.removeToken();
   TEST_ASSERT(!storage.token());
 }
