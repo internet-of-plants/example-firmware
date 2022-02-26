@@ -55,9 +55,9 @@ auto scapeNonPrintable(const std::string_view txt) noexcept -> CowString {
   if (isAllPrintable(txt))
     return CowString(txt);
 
-  const size_t len = txt.length();
   std::string s;
-  s.reserve(len);
+  s.reserve(txt.length());
+  
   for (auto & ch: txt) {
     if (isPrintable(ch)) {
       s += ch;
