@@ -6,9 +6,9 @@ auto Storage::setup(const uintmax_t size) noexcept -> bool {
     iop_assert(size > 0, IOP_STR("Storage size is zero"));
     
     if (!this->buffer) {
-        this->size = size;
         this->buffer = new (std::nothrow) uint8_t[size];
         if (!this->buffer) return false;
+        this->size = size;
         std::memset(buffer, 0, size);
     }
     return true;

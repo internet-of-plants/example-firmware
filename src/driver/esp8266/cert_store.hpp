@@ -34,8 +34,6 @@ auto InternalCertStore::findHashedTA(void *ctx, void *hashed_dn, size_t len) -> 
 
       // We can const cast because it's heap allocated
       // It shouldn't be a const function. But the upstream API is just that way
-      // NOLINTNEXTLINE cppcoreguidelines-pro-type-const-cast
-      iop_assert(cs->x509, IOP_STR("Unable to allocate X509List"));
       br_x509_trust_anchor *ta = (br_x509_trust_anchor*)cs->x509->getTrustAnchors();
       memcpy_P(ta->dn.data, cert.index, hashSize);
       ta->dn.len = hashSize;

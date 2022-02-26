@@ -93,6 +93,8 @@
         "charconv": "cpp",
         "cfloat": "cpp",
         "climits": "cpp",
-        "cstdbool": "cpp"
+        "cstdbool": "cpp",
+        "filesystem": "cpp",
+        "locale": "cpp"
     }
 }

@@ -3,19 +3,17 @@
 #include "sys/pgmspace.h"
 #include "EEPROM.h"
 
-// TODO: move this to global structure
-//EEPROMClass EEPROM;
-
 namespace driver {
-// TODO: properly handle EEPROM internal errors
 auto Storage::setup(const uintmax_t size) noexcept -> bool {
     this->size = size;
+    // Throws exception on OOM
     EEPROM.begin(size);
     return true;
 }
 auto Storage::commit() noexcept -> bool {
     return EEPROM.commit();
 }
+// Can never be nullptr as EEPROM.begin throws on OOM
 auto Storage::asRef() const noexcept -> uint8_t const * {
     return EEPROM.getConstDataPtr();
 }

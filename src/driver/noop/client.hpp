@@ -19,7 +19,7 @@ auto rawStatus(const int code) noexcept -> RawStatus {
 
 Session::~Session() noexcept {}
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept { (void) headers; }
-std::string Response::header(iop::StaticString key) const noexcept { (void) key; return ""; }
+auto Response::header(iop::StaticString key) const noexcept -> std::optional<std::string> { (void) key; return std::nullopt; }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept { (void) key; (void) value; }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept { (void) key; (void) value; }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept { (void) key; (void) value; }
@@ -30,5 +30,5 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
 HTTPClient::HTTPClient() noexcept {}
 HTTPClient::~HTTPClient() noexcept {}
 
-std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept { (void) uri; return std::nullopt; }
+auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> { (void) uri; return std::nullopt; }
 }

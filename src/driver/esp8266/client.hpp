@@ -60,9 +60,9 @@ void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   }
   this->http->collectHeaders(normalized.data(), headers.size());
 }
-std::string Response::header(iop::StaticString key) const noexcept {
+auto Response::header(iop::StaticString key) const noexcept -> std::optional<std::string> {
   const auto value = this->headers_.find(key.toString());
-  if (value == this->headers_.end()) return "";
+  if (value == this->headers_.end()) return std::nullopt;
   return std::move(value->second);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept {
@@ -124,7 +124,7 @@ HTTPClient::~HTTPClient() noexcept {
   delete this->http;
 }
 
-std::optional<Session> HTTPClient::begin(std::string_view uri) noexcept {
+auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> {
   IOP_TRACE(); 
   
   //iop_assert(iop::wifi.client, IOP_STR("Wifi has been moved out, client is nullptr"));

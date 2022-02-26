@@ -87,12 +87,12 @@ auto Network::apiStatus(const driver::RawStatus &raw) const noexcept -> std::opt
 }
 
 Network::Network(StaticString uri, const LogLevel &logLevel) noexcept
-  : logger_(logLevel, IOP_STR("NETWORK")), uri_(std::move(uri)) {
+  : logger_(logLevel, IOP_STR("NETWORK")), uri_(uri) {
   IOP_TRACE();
 }
 
 Response::Response(const NetworkStatus &status) noexcept
-    : status_(status), payload_(std::optional<std::vector<uint8_t>>()) {
+    : status_(status), payload_(std::nullopt) {
   IOP_TRACE();
 }
 Response::Response(const NetworkStatus &status, std::vector<uint8_t> payload) noexcept
@@ -154,8 +154,7 @@ auto Network::httpRequest(const HttpMethod method_,
   this->logger().trace(IOP_STR("Began HTTP connection"));
 
   if (token) {
-    const auto tok = *token;
-    session.setAuthorization(std::string(tok).c_str());
+    session.setAuthorization(std::string(*token));
   }
 
   // Currently only JSON is supported
@@ -201,7 +200,7 @@ auto Network::httpRequest(const HttpMethod method_,
 
     // Handle system upgrade request
     const auto upgrade = response->header(IOP_STR("LATEST_VERSION"));
-    if (upgrade.length() > 0 && memcmp(upgrade.c_str(), driver::device.firmwareMD5().data(), 32) != 0) {
+    if (upgrade && upgrade != iop::to_view(driver::device.firmwareMD5())) {
       this->logger().info(IOP_STR("Scheduled upgrade"));
       hook.schedule();
     }
@@ -248,8 +247,7 @@ void Network::setup() const noexcept {
   if (initialized) return;
   initialized = true;
 
-  std::vector<std::string> headers = {"LATEST_VERSION"};
-  http.headersToCollect(headers);
+  http.headersToCollect({"LATEST_VERSION"});
 
   iop::wifi.setup(maybeCertStore);
 }

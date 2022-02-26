@@ -4,16 +4,14 @@
 #include <fstream>
 
 namespace driver {
-// This driver is horrible, please fix this
-// Use fopen, properly report errors, keep the file open, memmap (?)...
-
 auto Storage::setup(uintmax_t size) noexcept -> bool {
+    // TODO: properly log errors
     iop_assert(size > 0, IOP_STR("Storage size is zero"));
 
     if (!this->buffer) {
-        this->size = size;
         this->buffer = new (std::nothrow) uint8_t[size];
         if (!this->buffer) return false;
+        this->size = size;
         std::memset(this->buffer, '\0', size);
     }
 

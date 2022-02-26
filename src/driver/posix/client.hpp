@@ -68,12 +68,12 @@ void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   }
   this->headersToCollect_ = std::move(headers);
 }
-std::string Response::header(iop::StaticString key) const noexcept {
+auto Response::header(iop::StaticString key) const noexcept -> std::optional<std::string> {
   auto keyString = key.toString();
   // Headers can't be UTF8 so we cool
   std::transform(keyString.begin(), keyString.end(), keyString.begin(),
       [](unsigned char c){ return std::tolower(c); });
-  if (this->headers_.count(keyString) == 0) return "";
+  if (this->headers_.count(keyString) == 0) return std::nullopt;
   return this->headers_.at(keyString);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept  {

@@ -18,7 +18,7 @@ auto Device::availableStorage() const noexcept -> uintmax_t {
 
 void Device::deepSleep(uintmax_t seconds) const noexcept {
   if (seconds == 0) seconds = UINTMAX_MAX;
-  // Note: this only sleeps our current thread, but it's not that useful sleeping the entire process in Posix
+  // Note: this only sleeps our current thread, but we currently don't use multiple threads on posix anyway
   std::this_thread::sleep_for(std::chrono::seconds(seconds));
 }
 
@@ -27,6 +27,7 @@ iop::MD5Hash & Device::firmwareMD5() const noexcept {
   static bool cached = false;
   if (cached)
     return hash;
+  hash.fill('\0');
   
   const auto filename = std::filesystem::current_path().append(driver::execution_path());
   std::ifstream file(filename);
@@ -38,11 +39,11 @@ iop::MD5Hash & Device::firmwareMD5() const noexcept {
   file.close();
   iop_assert(!file.fail(), IOP_STR("Unable to close firmware file"));
 
-  uint8_t buff[16];
+  std::array<uint8_t, 16> buff;
   MD5_CTX md5;
   MD5_Init(&md5);
   MD5_Update(&md5, &data.front(), data.size());
-  MD5_Final(buff, &md5);
+  MD5_Final(buff.data(), &md5);
   for (uint8_t i = 0; i < 16; i++){
     sprintf(hash.data() + (i * 2), "%02X", buff[i]);
   }

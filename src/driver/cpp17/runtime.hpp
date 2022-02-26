@@ -15,10 +15,10 @@ auto execution_path() noexcept -> std::string_view {
 }
 #ifdef IOP_POSIX
 auto stack_used() noexcept -> uintmax_t {
+  // Not the most precise way of getting stack usage
   uintptr_t stackend;
   stackend = (uintptr_t) (void*) &stackend;
 
-  // POSIX
   struct rlimit limit;
   getrlimit(RLIMIT_STACK, &limit);
 
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   driver::setup();
   while (true) {
     driver::loop();
-    driver::thisThread.sleep(100);
+    driver::thisThread.sleep(50);
   }
   return 0;
 }

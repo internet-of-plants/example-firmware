@@ -10,6 +10,13 @@
 #error "Target not supported"
 #endif
 
+#include "driver/device.hpp"
+
 namespace driver {
+    auto Thread::halt() const noexcept -> void {
+        driver::device.deepSleep(0);
+        this->abort();
+    }
+
     Thread thisThread;
 }
