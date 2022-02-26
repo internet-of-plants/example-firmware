@@ -193,7 +193,7 @@ auto Network::httpRequest(const HttpMethod method_,
 
   this->logger().debug(IOP_STR("Making HTTP request"));
 
-  auto responseVariant = session.sendRequest(method.toString().c_str(), data_);
+  auto responseVariant = session.sendRequest(method.toString(), data_);
   if (const auto *error = std::get_if<int>(&responseVariant)) {
     return *error;
   } else if (auto *response = std::get_if<driver::Response>(&responseVariant)) {

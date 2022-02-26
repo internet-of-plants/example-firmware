@@ -1,4 +1,5 @@
 #include "driver/device.hpp"
+#include "driver/cpp17/runtime_metadata.hpp"
 
 #include "driver/cpp17/md5.hpp"
 

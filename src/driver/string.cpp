@@ -56,9 +56,9 @@ auto scapeNonPrintable(const std::string_view txt) noexcept -> CowString {
     return CowString(txt);
 
   const size_t len = txt.length();
-  std::string s(len, '\0');
-  for (uint8_t index = 0; index < len; ++index) {
-    // NOLINTNEXTLINE cppcoreguidelines-pro-bounds-pointer-arithmetic
+  std::string s;
+  s.reserve(len);
+  for (uint16_t index = 0; index < len; ++index) {
     const auto ch = txt.begin()[index];
     if (isPrintable(ch)) {
       s += ch;

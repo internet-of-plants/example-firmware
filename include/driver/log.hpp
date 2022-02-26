@@ -2,6 +2,7 @@
 #define IOP_DRIVER_LOG_HPP
 
 #include "driver/string.hpp"
+#include <optional>
 
 /// Helps getting metadata on the executed code (at compile time)
 #define IOP_FILE ::iop::StaticString(reinterpret_cast<const __FlashStringHelper*>(__FILE__))
@@ -16,10 +17,11 @@
 
 /// Logs scope changes to serial if logLevel is set to TRACE
 /// FIXME: Sadly tracing is a global property for now, it should be fixed
-#define IOP_TRACE() IOP_TRACE_INNER(__COUNTER__)
+#define IOP_TRACE2(logger) IOP_TRACE_INNER(__COUNTER__, logger)
+#define IOP_TRACE() IOP_TRACE_INNER(__COUNTER__, iop::Log(iop::Log::isTracing() ? iop::LogLevel::TRACE : iop::LogLevel::DEBUG, IOP_STR("TRACER")))
 // Technobabble to stringify __COUNTER__
-#define IOP_TRACE_INNER(x) IOP_TRACE_INNER2(x)
-#define IOP_TRACE_INNER2(x) const ::iop::Tracer iop_tracer_##x(IOP_CODE_POINT());
+#define IOP_TRACE_INNER(x, logger) IOP_TRACE_INNER2(x, logger)
+#define IOP_TRACE_INNER2(x, logger) const ::iop::Tracer iop_tracer_##x(IOP_CODE_POINT(), logger);
 
 namespace iop {
 
@@ -44,25 +46,6 @@ public:
   auto file() const noexcept -> StaticString { return this->file_; }
   auto line() const noexcept -> uint32_t { return this->line_; }
   auto func() const noexcept -> StaticString { return this->func_; }
-};
-
-/// Tracer objects, logs scope changes. Useful for debugging.
-///
-/// Doesn't use the official logging system to avoid clutter.
-// TODO: use official logging and stop with global tracing
-class Tracer {
-  CodePoint point;
-
-public:
-  /// Use `IOP_TRACE()` instead of instantiating it manually.
-  explicit Tracer(CodePoint point) noexcept;
-  ~Tracer() noexcept;
-
-  // Don't move or copy it, just use it as a scope logging guard
-  Tracer(const Tracer &other) noexcept = delete;
-  Tracer(Tracer &&other) noexcept = delete;
-  auto operator=(const Tracer &other) noexcept -> Tracer & = delete;
-  auto operator=(Tracer &&other) noexcept -> Tracer & = delete;
 };
 
 /// Represents a logging interface that can be attached to the system
@@ -253,6 +236,28 @@ private:
   void log(const LogLevel &level, const std::string_view &msg, const LogType &logType,
            const StaticString &lineTermination) const noexcept;
 };
+
+
+/// Tracer objects, logs scope changes. Useful for debugging.
+///
+/// Doesn't use the official logging system to avoid clutter.
+// TODO: use official logging and stop with global tracing
+class Tracer {
+  CodePoint point;
+  Log logger;
+
+public:
+  /// Use `IOP_TRACE()` instead of instantiating it manually.
+  explicit Tracer(CodePoint point, iop::Log logger) noexcept;
+  ~Tracer() noexcept;
+
+  // Don't move or copy it, just use it as a scope logging guard
+  Tracer(const Tracer &other) noexcept = delete;
+  Tracer(Tracer &&other) noexcept = delete;
+  auto operator=(const Tracer &other) noexcept -> Tracer & = delete;
+  auto operator=(Tracer &&other) noexcept -> Tracer & = delete;
+};
+
 void logMemory(const iop::Log &logger) noexcept;
 } // namespace iop
 

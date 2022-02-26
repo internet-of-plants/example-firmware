@@ -203,89 +203,60 @@ auto LogHook::operator=(LogHook &&other) noexcept -> LogHook & {
   return *this;
 }
 
-Tracer::Tracer(CodePoint point) noexcept : point(std::move(point)) {
-  if (!Log::isTracing())
-    return;
+Tracer::Tracer(CodePoint point, Log logger) noexcept : point(std::move(point)), logger(logger) {
+  if (this->logger.level() != LogLevel::TRACE) return;
 
-  Log::flush();
-  Log::print(IOP_STR("[TRACE] TRACER: Entering new scope, at line "), LogLevel::TRACE, LogType::START);
-  Log::print(std::to_string(this->point.line()), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR(", in function "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(this->point.func(), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR(", at file "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(this->point.file(), LogLevel::TRACE, LogType::CONTINUITY);
-
+  this->logger.trace(IOP_STR("Entering new scope at line "),
+                     std::to_string(this->point.line()),
+                     IOP_STR(", in function "),
+                     this->point.func(),
+                     IOP_STR(", at file "),
+                     this->point.file());
+  
   {
     // Could this cause memory fragmentation?
     auto memory = driver::device.availableMemory();
     
-    Log::print(IOP_STR("\n[TRACE] TRACER: Free Stack "), LogLevel::TRACE, LogType::CONTINUITY);
-    Log::print(std::to_string(memory.availableStack), LogLevel::TRACE, LogType::CONTINUITY);
+    this->logger.trace(IOP_STR("Free stack"), std::to_string(memory.availableStack));
 
     for (auto& item: memory.availableHeap) {
-      Log::print(IOP_STR(", Free "), LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(item.first, LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(IOP_STR(" "), LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(std::to_string(item.second), LogLevel::TRACE, LogType::CONTINUITY);
+      this->logger.trace(IOP_STR("Free "), item.first, IOP_STR(" "), std::to_string(item.second));
     }
     for (auto& item: memory.biggestHeapBlock) {
-      Log::print(IOP_STR(", Biggest "), LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(item.first, LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(IOP_STR(" Block "), LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(std::to_string(item.second), LogLevel::TRACE, LogType::CONTINUITY);
+      this->logger.trace(IOP_STR("Biggest "), item.first, IOP_STR(" Block "), std::to_string(item.second));
     }
   }
 
-  Log::print(IOP_STR(", Connection "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(std::to_string(iop::wifi.status() == driver::StationStatus::GOT_IP), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR("\n"), LogLevel::TRACE, LogType::END);
-  Log::flush();
+  this->logger.trace(IOP_STR("Connection "), std::to_string(iop::wifi.status() == driver::StationStatus::GOT_IP));
 }
 Tracer::~Tracer() noexcept {
-  if (!Log::isTracing())
-    return;
+  if (this->logger.level() != LogLevel::TRACE) return;
 
-  Log::flush();
-  Log::print(IOP_STR("[TRACE] TRACER: Leaving scope, at line "), LogLevel::TRACE, LogType::START);
-  Log::print(std::to_string(this->point.line()), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR(", in function "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(this->point.func(), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR(", at file "), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(this->point.file(), LogLevel::TRACE, LogType::CONTINUITY);
-  Log::print(IOP_STR("\n"), LogLevel::TRACE, LogType::END);
-  Log::flush();
+  this->logger.trace(IOP_STR("Leaving scope, at line "),
+                     std::to_string(this->point.line()),
+                     IOP_STR(", in function "),
+                     this->point.func(),
+                     IOP_STR(", at file "),
+                     this->point.file());
 }
 
 void logMemory(const Log &logger) noexcept {
   if (logger.level() > LogLevel::INFO) return;
 
-  Log::flush();
-  Log::print(IOP_STR("[INFO] "), logger.level(), LogType::START);
-  Log::print(logger.target(), logger.level(), LogType::CONTINUITY);
-
   {
     // Could this cause memory fragmentation?
     auto memory = driver::device.availableMemory();
-
-    Log::print(IOP_STR(": Free Stack "), logger.level(), LogType::CONTINUITY);
-    Log::print(std::to_string(memory.availableStack), logger.level(), LogType::CONTINUITY);
+    
+    logger.info(IOP_STR("Free stack"), std::to_string(memory.availableStack));
 
     for (auto& item: memory.availableHeap) {
-      Log::print(IOP_STR(", Free "), logger.level(), LogType::CONTINUITY);
-      Log::print(item.first, logger.level(), LogType::CONTINUITY);
-      Log::print(IOP_STR(" "), LogLevel::TRACE, LogType::CONTINUITY);
-      Log::print(std::to_string(item.second), logger.level(), LogType::CONTINUITY);
+      logger.info(IOP_STR("Free "), item.first, IOP_STR(" "), std::to_string(item.second));
     }
     for (auto& item: memory.biggestHeapBlock) {
-      Log::print(IOP_STR(", Biggest "), logger.level(), LogType::CONTINUITY);
-      Log::print(item.first, logger.level(), LogType::CONTINUITY);
-      Log::print(IOP_STR(" Block "), logger.level(), LogType::CONTINUITY);
-      Log::print(std::to_string(item.second), logger.level(), LogType::CONTINUITY);
+      logger.info(IOP_STR("Biggest "), item.first, IOP_STR(" Block "), std::to_string(item.second));
     }
   }
-  Log::print(IOP_STR(", Connection "), logger.level(), LogType::CONTINUITY);
-  Log::print(std::to_string(iop::wifi.status() == driver::StationStatus::GOT_IP), logger.level(), LogType::CONTINUITY);
-  Log::print(IOP_STR("\n"), logger.level(), LogType::END);
-  Log::flush();
+
+  logger.info(IOP_STR("Connection "), std::to_string(iop::wifi.status() == driver::StationStatus::GOT_IP));
 }
 } // namespace iop
