@@ -17,14 +17,11 @@
 namespace iop {
 auto hashString(const std::string_view txt) noexcept -> uint64_t {
   IOP_TRACE();
-  const auto *const bytes = txt.begin();
   const uint64_t p = 16777619; // NOLINT cppcoreguidelines-avoid-magic-numbers
   uint64_t hash = 2166136261;  // NOLINT cppcoreguidelines-avoid-magic-numbers
 
-  const auto length = txt.length();
-  for (uint32_t i = 0; i < length; ++i) {
-    // NOLINTNEXTLINE *-pro-bounds-pointer-arithmetic
-    hash = (hash ^ (uint64_t)bytes[i]) * p;
+  for (const auto & byte: txt) {
+    hash = (hash ^ (uint64_t)byte) * p;
   }
 
   hash += hash << 13; // NOLINT cppcoreguidelines-avoid-magic-numbers
@@ -41,10 +38,7 @@ auto isPrintable(const char ch) noexcept -> bool {
 }
 
 auto isAllPrintable(const std::string_view txt) noexcept -> bool {
-  const auto len = txt.length();
-  for (uint8_t index = 0; index < len; ++index) {
-    const auto ch = txt.begin()[index]; // NOLINT *-pro-bounds-pointer-arithmetic
-
+  for (const auto & ch: txt) {
     if (!isPrintable(ch))
       return false;
   }
@@ -57,8 +51,8 @@ auto scapeNonPrintable(const std::string_view txt) noexcept -> CowString {
 
   std::string s;
   s.reserve(txt.length());
-  
-  for (auto & ch: txt) {
+
+  for (const auto & ch: txt) {
     if (isPrintable(ch)) {
       s += ch;
     } else {

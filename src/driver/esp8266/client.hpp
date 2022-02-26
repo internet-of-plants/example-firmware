@@ -51,9 +51,14 @@ Session::~Session() noexcept {
   if (this->http && this->http->get().http)
     this->http->get().http->end();
 }
-void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept {
+void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
-  this->http->collectHeaders(headers, count);
+  std::vector<const char*> normalized;
+  normalized.reserve(headers.size());
+  for (const auto &str: headers) {
+    normalized.push_back(str.c_str());
+  }
+  this->http->collectHeaders(normalized.data(), headers.size());
 }
 std::string Response::header(iop::StaticString key) const noexcept {
   const auto value = this->headers_.find(key.toString());

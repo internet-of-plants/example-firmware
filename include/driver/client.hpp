@@ -103,10 +103,7 @@ public:
   HTTPClient() noexcept;
   ~HTTPClient() noexcept;
   auto begin(std::string_view uri) noexcept -> std::optional<Session>;
-
-  // TODO: improve this method name
-  // UNSAFE
-  void headersToCollect(const char * headers[], size_t count) noexcept;
+  auto headersToCollect(std::vector<std::string> headers) noexcept -> void;
 
   friend Session;
 };

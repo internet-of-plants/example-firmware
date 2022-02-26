@@ -60,17 +60,13 @@ Session::~Session() noexcept {
   if (this->fd_.use_count() == 1)
     close(*this->fd_);
 }
-void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept {
-  std::vector<std::string> vec;
-  vec.reserve(count);
-  for (size_t index = 0; index < count; ++index) {
-    std::string key = headers[index];
+void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
+  for (auto & key: headers) {
     // Headers can't be UTF8 so we cool
     std::transform(key.begin(), key.end(), key.begin(),
             [](unsigned char c){ return std::tolower(c); });
-    vec.push_back(key);
   }
-  this->headersToCollect_ = std::move(vec);
+  this->headersToCollect_ = std::move(headers);
 }
 std::string Response::header(iop::StaticString key) const noexcept {
   auto keyString = key.toString();

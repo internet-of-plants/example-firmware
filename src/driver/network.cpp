@@ -179,10 +179,10 @@ auto Network::httpRequest(const HttpMethod method_,
     
     session.addHeader(IOP_STR("FREE_STACK"), std::to_string(memory.availableStack));
 
-    for (auto& item: memory.availableHeap) {
+    for (const auto & item: memory.availableHeap) {
       session.addHeader(IOP_STR("FREE_").toString().append(item.first), std::to_string(item.second));
     }
-    for (auto& item: memory.biggestHeapBlock) {
+    for (const auto & item: memory.biggestHeapBlock) {
       session.addHeader(IOP_STR("BIGGEST_BLOCK_").toString().append(item.first), std::to_string(item.second));
     }
   }
@@ -248,8 +248,8 @@ void Network::setup() const noexcept {
   if (initialized) return;
   initialized = true;
 
-  const char * headers[] = {"LATEST_VERSION",};
-  http.headersToCollect(headers, 1);
+  std::vector<std::string> headers = {"LATEST_VERSION"};
+  http.headersToCollect(headers);
 
   iop::wifi.setup(maybeCertStore);
 }

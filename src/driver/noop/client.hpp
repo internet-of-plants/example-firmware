@@ -18,7 +18,7 @@ auto rawStatus(const int code) noexcept -> RawStatus {
 }
 
 Session::~Session() noexcept {}
-void HTTPClient::headersToCollect(const char * headers[], size_t count) noexcept { (void) headers; (void) count; }
+void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept { (void) headers; }
 std::string Response::header(iop::StaticString key) const noexcept { (void) key; return ""; }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept { (void) key; (void) value; }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept { (void) key; (void) value; }
