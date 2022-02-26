@@ -50,47 +50,39 @@ HTTPClient::HTTPClient() noexcept: headersToCollect_() {}
 HTTPClient::~HTTPClient() noexcept {}
 
 static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
-  if (iop::Log::isTracing())
-    iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);
+  if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);
   return write(fd, msg, len);
 }
 
 Session::Session(HTTPClient &http, std::string_view uri, std::shared_ptr<int> fd) noexcept: fd_(std::move(fd)), http(std::ref(http)), headers{}, uri_(uri) { IOP_TRACE(); }
 Session::~Session() noexcept {
-  if (this->fd_.use_count() == 1)
-    close(*this->fd_);
+  if (this->fd_.use_count() == 1) close(*this->fd_);
 }
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   for (auto & key: headers) {
     // Headers can't be UTF8 so we cool
-    std::transform(key.begin(), key.end(), key.begin(),
-            [](unsigned char c){ return std::tolower(c); });
+    std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c){ return std::tolower(c); });
   }
   this->headersToCollect_ = std::move(headers);
 }
 auto Response::header(iop::StaticString key) const noexcept -> std::optional<std::string> {
   auto keyString = key.toString();
   // Headers can't be UTF8 so we cool
-  std::transform(keyString.begin(), keyString.end(), keyString.begin(),
-      [](unsigned char c){ return std::tolower(c); });
+  std::transform(keyString.begin(), keyString.end(), keyString.begin(), [](unsigned char c){ return std::tolower(c); });
   if (this->headers_.count(keyString) == 0) return std::nullopt;
   return this->headers_.at(keyString);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept  {
-  auto keyLower = key.toString();
-  this->headers.emplace(keyLower, value.toString());
+  this->headers.emplace(key.toString(), value.toString());
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept  {
-  auto keyLower = key.toString();
-  this->headers.emplace(keyLower, std::string(value));
+  this->headers.emplace(key.toString(), std::string(value));
 }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept  {
-  std::string keyLower(key);
-  this->headers.emplace(keyLower, value.toString());
+  this->headers.emplace(std::string(key), value.toString());
 }
 void Session::addHeader(std::string_view key, std::string_view value) noexcept  {
-  std::string keyLower(key);
-  this->headers.emplace(keyLower, std::string(value));
+  this->headers.emplace(std::string(key), std::string(value));
 }
 void Session::setAuthorization(std::string auth) noexcept  {
   if (auth.length() == 0) return;
@@ -104,15 +96,15 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
 
   iop_assert(this->http, IOP_STR("Session has been moved out"));
 
-  std::unordered_map<std::string, std::string> responseHeaders;
-  std::vector<uint8_t> responsePayload;
+  auto responseHeaders = std::unordered_map<std::string, std::string>();
+  auto responsePayload = std::vector<uint8_t>();
   auto status = std::make_optional(1000);
   const auto fd = *this->fd_;
 
   responseHeaders.reserve(this->http->get().headersToCollect_.size());
 
   {
-    const std::string_view path(this->uri_.begin() + this->uri_.find("/", this->uri_.find("://") + 3));
+    const auto path = std::string_view(this->uri_.begin() + this->uri_.find("/", this->uri_.find("://") + 3));
     clientDriverLogger.debug(IOP_STR("Send request to "), path);
 
     const auto fd = *this->fd_;
@@ -289,7 +281,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
 
 auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> {    
   struct sockaddr_in serv_addr;
-  int32_t fd = socket(AF_INET, SOCK_STREAM, 0);
+  auto fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     clientDriverLogger.error(IOP_STR("Unable to open socket"));
     return std::nullopt;
@@ -325,7 +317,7 @@ auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> 
     return std::nullopt;
   }
 
-  int32_t connection = connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+  auto connection = connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   if (connection < 0) {
     clientDriverLogger.error(IOP_STR("Unable to connect: "), std::to_string(connection));
     return std::nullopt;

@@ -1,6 +1,6 @@
 #include "driver/server.hpp"
 #include "driver/log.hpp"
-
+#include "driver/thread.hpp"
 #include "driver/panic.hpp"
 
 #include <memory>
@@ -20,7 +20,7 @@
 #include <fcntl.h>
 
 static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
-  if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::STARTEND);
+  if (iop::Log::isTracing()) iop::Log::print(msg, iop::LogLevel::TRACE, iop::LogType::CONTINUITY);
   ssize_t sent = 0;
   uint64_t count = 0;
   while ((sent = write(fd, msg, len)) < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
@@ -85,6 +85,7 @@ void HttpServer::begin() noexcept {
   addr.sin_port = htons(static_cast<uint16_t>(this->port));
   memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
 
+  // Is this UB?
   if (bind(fd, (struct sockaddr* )&addr, sizeof(addr)) < 0) {
     iop_panic(std::string("Unable to bind socket (") + std::to_string(errno) + "): " + strerror(errno));
     return;
@@ -109,13 +110,13 @@ void HttpServer::handleClient() noexcept {
   this->isHandlingRequest = true;
 
   iop_assert(this->maybeFD, IOP_STR("FD not found"));
-  int32_t fd = *this->maybeFD;
+  int fd = *this->maybeFD;
 
-  sockaddr_in addr = *this->address;
+  auto addr = *this->address;
   socklen_t addr_len = sizeof(addr);
 
   HttpConnection conn;
-  int32_t client = 0;
+  auto client = 0;
   if ((client = accept(fd, (sockaddr *)&addr, &addr_len)) <= 0) {
     if (client == 0) {
       logger().error(IOP_STR("Client fd is zero"));
@@ -128,52 +129,57 @@ void HttpServer::handleClient() noexcept {
   logger().debug(IOP_STR("Accepted connection: "), std::to_string(client));
   conn.currentClient = client;
 
-  bool firstLine = true;
-  bool isPayload = false;
+  auto firstLine = true;
+  auto isPayload = false;
   
   auto buffer = HttpConnection::Buffer({0});
-  auto *start = buffer.data();
+  ssize_t signedLen = 0;
+  size_t len = 0;
   while (true) {
-    logger().debug(IOP_STR("Try read: "), std::to_string(strnlen(buffer.begin(), 1024)));
+    logger().debug(IOP_STR("Try read: "), std::to_string(strnlen(buffer.begin(), buffer.max_size())));
 
-    ssize_t len = 0;
-    start += strnlen(buffer.begin(), 1024);
-    if (strnlen(buffer.begin(), 1024) < buffer.max_size() &&
-        (len = read(client, start, buffer.max_size() - strnlen(buffer.begin(), 1024))) < 0) {
+    if (len < buffer.max_size() &&
+        (signedLen = read(client, buffer.data() + len, buffer.max_size() - len)) < 0) {
       logger().error(IOP_STR("Read error: "), std::to_string(len));
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(50ms);
+        driver::thisThread.sleep(50);
         continue;
       } else {
-        logger().error(IOP_STR("Error reading from socket: "), std::to_string(errno), IOP_STR("): "), strerror(errno));
+        logger().error(IOP_STR("Error reading from socket ("), std::to_string(signedLen), IOP_STR("): "), std::to_string(errno), IOP_STR(" - "), strerror(errno));
         conn.reset();
         this->isHandlingRequest = false;
         return;
       }
     }
+    len += static_cast<size_t>(signedLen);
     logger().debug(IOP_STR("Len: "), std::to_string(len));
-    if (firstLine == true && len == 0) {
+
+    if (firstLine && len == 0) {
       logger().error(IOP_STR("Empty request"));
       conn.reset();
       this->isHandlingRequest = false;
       return;
     }
-    logger().debug(IOP_STR("Read: ("), std::to_string(len), IOP_STR(") ["), std::to_string(strnlen(buffer.begin(), 1024)));
+    logger().debug(IOP_STR("Read: ("), std::to_string(len), IOP_STR(")"));
 
-    std::string_view buff(buffer.begin());
+    if (len == 0) {
+      logger().debug(IOP_STR("EOF: "), std::to_string(isPayload));
+      break;
+    }
+
+    auto buff = std::string_view(buffer.begin(), len);
     if (len > 0 && firstLine) {
       if (buff.find("POST") != buff.npos) {
-        const size_t space = buff.substr(5).find(" ");
+        const auto space = buff.substr(5).find(" ");
         conn.currentRoute = buff.substr(5, space);
         logger().debug(IOP_STR("POST: "), conn.currentRoute);
       } else if (buff.find("GET") != buff.npos) {
-        const size_t space = buff.substr(4).find(" ");
+        const auto space = buff.substr(4).find(" ");
         conn.currentRoute = buff.substr(4, space);
         logger().debug(IOP_STR("GET: "), conn.currentRoute);
       } else if (buff.find("OPTIONS") != buff.npos) {
-        const size_t space = buff.substr(7).find(" ");
-        conn.currentRoute = buff.substr(7, space);
+        const auto space = buff.substr(8).find(" ");
+        conn.currentRoute = buff.substr(8, space);
         logger().debug(IOP_STR("OPTIONS: "), conn.currentRoute);
       } else {
         logger().error(IOP_STR("HTTP Method not found: "), buff);
@@ -183,46 +189,35 @@ void HttpServer::handleClient() noexcept {
       }
       firstLine = false;
       
-      iop_assert(buff.find("\n") != buff.npos, IOP_STR("First: ").toString() + std::to_string(buff.length()) + IOP_STR(" bytes don't contain newline, the path is too long\n").toString());
+      iop_assert(buff.find("\r\n") != buff.npos, IOP_STR("First: ").toString() + std::to_string(buff.length()) + IOP_STR(" bytes don't contain newline, the path is too long\n").toString());
       logger().debug(IOP_STR("Found first line"));
-      const char* ptr = buff.begin() + buff.find("\n") + 1;
-      memmove(buffer.data(), ptr, strlen(ptr) + 1);
-      buff = buffer.begin();
+      const auto newlineIndex = buff.find("\r\n");
+      len -= newlineIndex + 2;
+      memmove(buffer.data(), buffer.begin() + newlineIndex + 2, len);
+      buff = std::string_view(buffer.begin(), len);
     }
     logger().debug(IOP_STR("Headers + Payload: "), buff);
 
-    while (len > 0 && buff.length() > 0 && !isPayload) {
+    while (len > 0 && !isPayload) {
+      const auto newlineIndex = buff.find("\r\n");
       // TODO: if empty line is split into two reads (because of buff len) we are screwed
-      //  || buff.contains(IOP_STR("\n\n")) || buff.contains(IOP_STR("\n\r\n"))
-      if (buff.find("\r\n") != buff.npos && buff.find("\r\n") == buff.find("\r\n\r\n")) {
-        isPayload = true;
-
-        const char* ptr = buff.begin() + buff.find("\r\n\r\n") + 4;
-        memmove(buffer.data(), ptr, strlen(ptr) + 1);
-        buff = buffer.data();
-        if (buff.find("\n") == buff.npos) continue;
-      } else if (buff.find("\r\n") == buff.npos) {
+      if (newlineIndex == buff.npos) {
         iop_panic(IOP_STR("Bad code"));
+      } else if (newlineIndex != buff.npos && newlineIndex == buff.find("\r\n\r\n")) {
+        isPayload = true;
+        len -= newlineIndex + 4;
+        memmove(buffer.data(), buffer.begin() + newlineIndex + 4, len);
+        buff = std::string_view(buffer.begin(), len);
       } else {
-        const char* ptr = buff.begin() + buff.find("\r\n") + 2;
-        memmove(buffer.data(), ptr, strlen(ptr) + 1);
-        buff = buffer.begin();
-        // TODO: could this enter in a infinite loop?
-        if (buff.find("\n") == buff.npos) continue;
+        len -= newlineIndex + 2;
+        memmove(buffer.data(), buffer.begin() + newlineIndex + 2, len);
+        buff = std::string_view(buffer.begin(), len);
       }
     }
 
-    logger().debug(IOP_STR("Payload ("), std::to_string(buff.length()), IOP_STR(") ["), std::to_string(len), IOP_STR("]: "), buff);
+    logger().debug(IOP_STR("Payload ("), std::to_string(len), IOP_STR(")"));
 
     conn.currentPayload += buff;
-
-    // TODO: For some weird reason `read` is blocking if we try to read after EOF
-    // But it's not clear what will happen if EOF is exactly at buffer.max_size()
-    // Because it will continue, altough there isn't anything, but it's blocking on EOF
-    // But this behavior is not documented. To replicate remove:
-    // ` && len == buffer.max_size()` and it will get stuck in the `read` above
-    if (len > 0 && buff.length() > 0 && len == buffer.max_size())
-      continue;
 
     logger().debug(IOP_STR("Route: "), conn.currentRoute);
     iop::Log::shouldFlush(false);
@@ -248,8 +243,8 @@ void HttpServer::close() noexcept {
     this->address = nullptr;
   }
 
-  if (this->maybeFD)
-    ::close(*this->maybeFD);
+  if (this->maybeFD) ::close(*this->maybeFD);
+  this->maybeFD = std::nullopt;
 }
 
 void HttpServer::on(iop::StaticString uri, HttpServer::Callback handler) noexcept {
@@ -289,7 +284,7 @@ static auto percentDecode(const std::string_view input) noexcept -> std::optiona
       const auto v1 = tbl[(unsigned char)*in++];
       const auto v2 = tbl[(unsigned char)*in++];
       if(v1 < 0 || v2 < 0)
-        return std::optional<std::string>();
+        return std::nullopt;
       c = static_cast<char>((v1 << 4) | v2);
     }
     out.push_back(c);
@@ -301,21 +296,21 @@ void HttpConnection::reset() noexcept {
   this->currentHeaders = "";
   this->currentPayload = "";
   this->currentContentLength.reset();
-  if (this->currentClient)
-    ::close(*this->currentClient);
+  if (this->currentClient) ::close(*this->currentClient);
+  this->currentClient = std::nullopt;
 }
-std::optional<std::string> HttpConnection::arg(const iop::StaticString name) const noexcept {
+auto HttpConnection::arg(const iop::StaticString name) const noexcept -> std::optional<std::string> {
   IOP_TRACE();
   std::string_view view(this->currentPayload);
 
-  size_t argEncodingLen = 1 + name.length(); // len(name) + len('=')
-  size_t index = view.find(name.toString() + "=");
+  auto argEncodingLen = 1 + name.length(); // len(name) + len('=')
+  auto index = view.find(name.toString() + "=");
   if (index != 0) index = view.find(std::string("&") + name.asCharPtr() + "=");
-  if (index == view.npos) return std::optional<std::string>();
+  if (index == view.npos) return std::nullopt;
   if (index != 0) argEncodingLen++; // + len('&')
   view = view.substr(index + argEncodingLen);
 
-  const size_t end = view.find("&");
+  const auto end = view.find("&");
 
   if (end == view.npos) {
     const auto decoded = percentDecode(view);
@@ -331,11 +326,11 @@ std::optional<std::string> HttpConnection::arg(const iop::StaticString name) con
 
 void HttpConnection::send(uint16_t code, iop::StaticString contentType, iop::StaticString content) const noexcept {
   IOP_TRACE(); 
-  iop_assert(this->currentClient, IOP_STR("send but has no client"));
-  const int32_t fd = *this->currentClient;
+  iop_assert(this->currentClient, IOP_STR("No active client"));
+  const auto fd = *this->currentClient;
 
   const auto codeStr = std::to_string(code);
-  const std::string codeText = httpCodeToString(code);
+  const auto codeText = httpCodeToString(code);
   if (iop::Log::isTracing())
     iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::START);
   ::send(fd, "HTTP/1.0 ", 9);
@@ -346,9 +341,7 @@ void HttpConnection::send(uint16_t code, iop::StaticString contentType, iop::Sta
   ::send(fd, "Content-Type: ", 14);
   ::send(fd, contentType.asCharPtr(), contentType.length());
   ::send(fd, "; charset=ISO-8859-5\r\n", 22);
-  if (this->currentHeaders.length() > 0) {
-    ::send(fd, this->currentHeaders.c_str(), this->currentHeaders.length());
-  }
+  if (this->currentHeaders.length() > 0) ::send(fd, this->currentHeaders.c_str(), this->currentHeaders.length());
   if (this->currentContentLength) {
     const auto contentLength = std::to_string(*this->currentContentLength);
     ::send(fd, "Content-Length: ", 16);
@@ -356,11 +349,9 @@ void HttpConnection::send(uint16_t code, iop::StaticString contentType, iop::Sta
     ::send(fd, "\r\n", 2);
   }
   ::send(fd, "\r\n", 2);
-  if (content.length() > 0) {
-    ::send(fd, content.asCharPtr(), content.length());
-    if (iop::Log::isTracing())
-      iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::END);
-  }
+  if (content.length() > 0) ::send(fd, content.asCharPtr(), content.length());
+
+  if (iop::Log::isTracing()) iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::END);
 }
 
 void HttpConnection::setContentLength(const size_t contentLength) noexcept {
@@ -373,15 +364,12 @@ void HttpConnection::sendHeader(const iop::StaticString name, const iop::StaticS
 }
 void HttpConnection::sendData(iop::StaticString content) const noexcept {
   IOP_TRACE();
-  if (!this->currentClient) return;
-  const int32_t fd = *this->currentClient;
   logger().debug(IOP_STR("Send Content ("), std::to_string(content.length()), IOP_STR("): "), content);
-  
-  if (iop::Log::isTracing())
-    iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::START);
-  ::send(fd, content.asCharPtr(), content.length());
-  if (iop::Log::isTracing())
-    iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::END);
+  iop_assert(this->currentClient, IOP_STR("No active client"));
+
+  if (iop::Log::isTracing()) iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::START);
+  ::send(*this->currentClient, content.asCharPtr(), content.length());
+  if (iop::Log::isTracing()) iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::END);
 }
 void CaptivePortal::start() noexcept {}
 void CaptivePortal::close() noexcept {}
