@@ -17,7 +17,7 @@ auto to_server(void *ptr) noexcept -> ESP8266WebServer & {
 
 HttpConnection::HttpConnection(void * parent) noexcept: server(parent) {}
 auto HttpConnection::arg(iop::StaticString arg) const noexcept -> std::optional<std::string> {
-  if (!to_server(this->server).hasArg(arg.get())) return std::optional<std::string>();
+  if (!to_server(this->server).hasArg(arg.get())) return std::nullopt;
   return std::string(to_server(this->server).arg(arg.get()).c_str());
 }
 void HttpConnection::sendHeader(iop::StaticString name, iop::StaticString value) noexcept {

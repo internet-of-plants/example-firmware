@@ -3,6 +3,8 @@
 #include "driver/device.hpp"
 #include "driver/thread.hpp"
 
+// TODO: implement panic backend that reboots, we always panic on OOM, but because of heap fragmentation you generally would want to reboot to maximize uptime
+
 static bool isPanicking = false;
 
 constexpr static iop::PanicHook defaultHook(iop::PanicHook::defaultViewPanic,

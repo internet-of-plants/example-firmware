@@ -126,16 +126,10 @@ HTTPClient::~HTTPClient() noexcept {
 
 auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> {
   IOP_TRACE(); 
-  
-  //iop_assert(iop::wifi.client, IOP_STR("Wifi has been moved out, client is nullptr"));
-  //iop::wifi.client.setNoDelay(false);
-  //iop::wifi.client.setSync(true);
 
-  // We can afford bigger timeouts since we shouldn't make frequent requests
-  //constexpr uint16_t oneMinuteMs = 3 * 60 * 1000;
-  //this->http.setTimeout(oneMinuteMs);
-
-  //this->http.setAuthorization("");
+  iop_assert(this->http, IOP_STR("driver::HTTPClient* not allocated"));
+  this->http->setTimeout(UINT16_MAX);
+  this->http->setAuthorization("");
 
   // Parse URI
   auto index = uri.find("://");
@@ -170,7 +164,7 @@ auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> 
 
   iop_assert(iop::wifi.client, IOP_STR("Wifi has been moved out, client is nullptr"));
   iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
-  //this->http.setReuse(false);
+
   auto uriArduino = String();
   uriArduino.concat(uri.begin(), uri.length());
   if (this->http->begin(*iop::wifi.client, uriArduino)) {
