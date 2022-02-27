@@ -102,17 +102,15 @@ auto Api::reportPanic(const AuthToken &authToken, const PanicData &event) const 
     return iop::NetworkStatus::BROKEN_CLIENT;
 
   const auto token = iop::to_view(authToken);
-  const auto status = this->network.httpPost(token, IOP_STR("/v1/panic"), iop::to_view(*json));
+  const auto response = this->network.httpPost(token, IOP_STR("/v1/panic"), iop::to_view(*json));
 
 #ifndef IOP_MOCK_MONITOR
-  if (const auto *error = std::get_if<int>(&status)) {
-    const auto code = std::to_string(*error);
-    this->logger.error(IOP_STR("Unexpected response at Api::reportPanic: "), code);
+  const auto status = response.status();
+  if (!status) {
+    this->logger.error(IOP_STR("Unexpected response at Api::reportPanic: "), std::to_string(response.code()));
     return iop::NetworkStatus::BROKEN_SERVER;
-  } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status();
   }
-  iop_panic(IOP_STR("Invalid variant"));
+  return *status;
 #else
   return iop::NetworkStatus::OK;
 #endif
@@ -135,17 +133,15 @@ auto Api::registerEvent(const AuthToken &authToken, const Event &event) const no
     return iop::NetworkStatus::BROKEN_CLIENT;
 
   const auto token = iop::to_view(authToken);
-  const auto status = this->network.httpPost(token, IOP_STR("/v1/event"), iop::to_view(*json));
+  const auto response = this->network.httpPost(token, IOP_STR("/v1/event"), iop::to_view(*json));
 
 #ifndef IOP_MOCK_MONITOR
-  if (const auto *error = std::get_if<int>(&status)) {
-    const auto code = std::to_string(*error);
-    this->logger.error(IOP_STR("Unexpected response at Api::registerEvent: "), code);
+  const auto status = response.status();
+  if (!status) {
+    this->logger.error(IOP_STR("Unexpected response at Api::registerEvent: "), std::to_string(response.code()));
     return iop::NetworkStatus::BROKEN_SERVER;
-  } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status();
   }
-  iop_panic(IOP_STR("Invalid variant"));
+  return *status;
 #else
   return iop::NetworkStatus::OK;
 #endif
@@ -167,37 +163,34 @@ auto Api::authenticate(std::string_view username, std::string_view password) con
 
   if (!json)
     return iop::NetworkStatus::BROKEN_CLIENT;
-  const auto status = this->network.httpPost(IOP_STR("/v1/user/login"), iop::to_view(*json));
+  auto response = this->network.httpPost(IOP_STR("/v1/user/login"), iop::to_view(*json));
 
 #ifndef IOP_MOCK_MONITOR
-  if (const auto *error = std::get_if<int>(&status)) {
-    const auto code = std::to_string(*error);
-    this->logger.error(IOP_STR("Unexpected response at Api::authenticate: "), code);
+  const auto status = response.status();
+  if (!status) {
+    this->logger.error(IOP_STR("Unexpected response at Api::authenticate: "), std::to_string(response.code()));
     return iop::NetworkStatus::BROKEN_SERVER;
-  } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    if (response->status() != iop::NetworkStatus::OK) {
-      return response->status();
-    }
-
-    const auto payload = response->payload();
-    if (!payload) {
-      this->logger.error(IOP_STR("Server answered OK, but payload is missing"));
-      return iop::NetworkStatus::BROKEN_SERVER;
-    }
-
-    if (!iop::isAllPrintable(*payload)) {
-      this->logger.error(IOP_STR("Unprintable payload, this isn't supported: "), iop::to_view(iop::scapeNonPrintable(*payload)));
-      return iop::NetworkStatus::BROKEN_SERVER;
-    }
-    if (payload->length() != 64) {
-      this->logger.error(IOP_STR("Auth token does not occupy 64 bytes: size = "), std::to_string(payload->length()));
-    }
-
-    AuthToken token;
-    memcpy(token.data(), &payload->front(), payload->length());
-    return token;
   }
-  iop_panic(IOP_STR("Invalid variant"));
+
+  const auto payloadBuff = std::move(response.await().payload);
+  const auto payload = iop::to_view(payloadBuff);
+
+  if (payload.length() == 0) {
+    this->logger.error(IOP_STR("Server answered OK, but payload is missing"));
+    return iop::NetworkStatus::BROKEN_SERVER;
+  }
+
+  if (!iop::isAllPrintable(payload)) {
+    this->logger.error(IOP_STR("Unprintable payload, this isn't supported: "), iop::to_view(iop::scapeNonPrintable(payload)));
+    return iop::NetworkStatus::BROKEN_SERVER;
+  }
+  if (payload.length() != 64) {
+    this->logger.error(IOP_STR("Auth token does not occupy 64 bytes: size = "), std::to_string(payload.length()));
+  }
+
+  AuthToken token;
+  memcpy(token.data(), payload.begin(), payload.length());
+  return token;
 #else
   return AuthToken::empty();
 #endif
@@ -207,17 +200,15 @@ auto Api::registerLog(const AuthToken &authToken, std::string_view log) const no
   IOP_TRACE();
   const auto token = iop::to_view(authToken);
   this->logger.info(IOP_STR("Register log. Token: "), token, IOP_STR(". Log: "), log);
-  auto const status = this->network.httpPost(token, IOP_STR("/v1/log"), log);
+  auto const response = this->network.httpPost(token, IOP_STR("/v1/log"), log);
 
 #ifndef IOP_MOCK_MONITOR
-  if (const auto *error = std::get_if<int>(&status)) {
-    const auto code = std::to_string(*error);
-    this->logger.error(IOP_STR("Unexpected response at Api::registerLog: "), code);
+  const auto status = response.status();
+  if (!status) {
+    this->logger.error(IOP_STR("Unexpected response at Api::registerLog: "), std::to_string(response.code()));
     return iop::NetworkStatus::BROKEN_SERVER;
-  } else if (const auto *response = std::get_if<iop::Response>(&status)) {
-    return response->status();
   }
-  iop_panic(IOP_STR("Invalid variant"));
+  return *status;
 #else
   return iop::NetworkStatus::OK;
 #endif

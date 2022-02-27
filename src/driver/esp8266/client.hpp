@@ -7,50 +7,68 @@
 #include <charconv>
 #include <system_error>
 
-namespace driver {
+namespace iop {
+auto Network::codeToString(const int code) const noexcept -> std::string {
+  IOP_TRACE();
+  switch (code) {
+  case HTTPC_ERROR_CONNECTION_FAILED:
+    return IOP_STR("CONNECTION_FAILED").toString();
+  case HTTPC_ERROR_NOT_CONNECTED:
+    return IOP_STR("NOT_CONNECTED").toString();
+  case HTTPC_ERROR_CONNECTION_LOST:
+    return IOP_STR("CONNECTION_LOST").toString();
+  case HTTPC_ERROR_SEND_HEADER_FAILED:
+    return IOP_STR("SEND_HEADER_FAILED").toString();
+  case HTTPC_ERROR_SEND_PAYLOAD_FAILED:
+    return IOP_STR("SEND_PAYLOAD_FAILED").toString();
+  case HTTPC_ERROR_NO_STREAM:
+    return IOP_STR("NO_STREAM").toString();
+  case HTTPC_ERROR_NO_HTTP_SERVER:
+    return IOP_STR("NO_HTTP_SERVER").toString();
+  case HTTPC_ERROR_ENCODING:
+    return IOP_STR("UNSUPPORTED_ENCODING").toString();
+  case HTTPC_ERROR_STREAM_WRITE:
+    return IOP_STR("WRITE_ERROR").toString();
+  case HTTPC_ERROR_READ_TIMEOUT:
+    return IOP_STR("READ_TIMEOUT").toString();
+  case 200:
+    return IOP_STR("OK").toString();
+  case 500:
+    return IOP_STR("SERVER_ERROR").toString();
+  case 403:
+    return IOP_STR("FORBIDDEN").toString();
+  }
+  return std::to_string(code);
+}
+}
 
-auto rawStatus(const int code) noexcept -> RawStatus {
+namespace driver{
+auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus> {
   IOP_TRACE();
   switch (code) {
   case 200:
-    return RawStatus::OK;
+    return iop::NetworkStatus::OK;
   case 500:
-    return RawStatus::SERVER_ERROR;
+  case HTTPC_ERROR_NO_HTTP_SERVER:
+  // Unsupported Transfer-Encoding header, if set it must be "chunked"
+  case HTTPC_ERROR_ENCODING:
+    return iop::NetworkStatus::BROKEN_SERVER;
   case 403:
-    return RawStatus::FORBIDDEN;
+    return iop::NetworkStatus::FORBIDDEN;
   case HTTPC_ERROR_CONNECTION_FAILED:
-    return RawStatus::CONNECTION_FAILED;
   case HTTPC_ERROR_SEND_HEADER_FAILED:
   case HTTPC_ERROR_SEND_PAYLOAD_FAILED:
-    return RawStatus::SEND_FAILED;
   case HTTPC_ERROR_NOT_CONNECTED:
   case HTTPC_ERROR_CONNECTION_LOST:
-    return RawStatus::CONNECTION_LOST;
   case HTTPC_ERROR_NO_STREAM:
-    return RawStatus::READ_FAILED;
-  case HTTPC_ERROR_NO_HTTP_SERVER:
-    return RawStatus::NO_SERVER;
-  case HTTPC_ERROR_ENCODING:
-    // Unsupported Transfer-Encoding header, if set it must be "chunked"
-    return RawStatus::ENCODING_NOT_SUPPORTED;
   case HTTPC_ERROR_STREAM_WRITE:
-    return RawStatus::READ_FAILED;
   case HTTPC_ERROR_READ_TIMEOUT:
-    return RawStatus::READ_TIMEOUT;
-
-  // We generally don't use default to be able to use static-analyzers to check
-  // for exaustiveness, but this is a switch on a int, so...
-  default:
-    return RawStatus::UNKNOWN;
+    return iop::NetworkStatus::IO_ERROR;
   }
+  return std::nullopt;
 }
 
 Session::Session(HTTPClient &http, std::string_view uri) noexcept: http(std::ref(http)), uri_(uri) { IOP_TRACE(); }
-Session::~Session() noexcept {
-  IOP_TRACE();
-  if (this->http && this->http->get().http)
-    this->http->get().http->end();
-}
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
   std::vector<const char*> normalized;
@@ -94,11 +112,11 @@ void Session::setAuthorization(std::string auth) noexcept {
   iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   this->http->get().http->setAuthorization(auth.c_str());
 }
-auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> std::variant<Response, int> {
+auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> Response {
   iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
   const auto code = this->http->get().http->sendRequest(method.c_str(), reinterpret_cast<const uint8_t*>(data.begin()), data.length());
   if (code < 0) {
-    return code;
+    return Response(code);
   }
 
   std::unordered_map<std::string, std::string> headers;
@@ -124,7 +142,7 @@ HTTPClient::~HTTPClient() noexcept {
   delete this->http;
 }
 
-auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> {
+auto HTTPClient::begin(const std::string_view uri, std::function<Response(Session &)> func) noexcept -> Response {
   IOP_TRACE(); 
 
   iop_assert(this->http, IOP_STR("driver::HTTPClient* not allocated"));
@@ -168,9 +186,20 @@ auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> 
   auto uriArduino = String();
   uriArduino.concat(uri.begin(), uri.length());
   if (this->http->begin(*iop::wifi.client, uriArduino)) {
-    return Session(*this, uri);
+    auto session = Session(*this, uri);
+    const auto ret = func(session);
+    this->http->end();
+    return ret;
   }
 
-  return std::nullopt;
+  return driver::Response(iop::NetworkStatus::IO_ERROR);
+}
+HTTPClient::HTTPClient(HTTPClient &&other) noexcept: http(other.http) {
+  other.http = nullptr;
+}
+auto HTTPClient::operator==(HTTPClient &&other) noexcept -> HTTPClient & {
+  this->http = other.http;
+  other.http = nullptr;
+  return *this;
 }
 }

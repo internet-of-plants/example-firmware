@@ -8,10 +8,11 @@
 
 namespace driver {
 auto Upgrade::run(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> driver::UpgradeStatus {
-    const auto variant = network.httpGet(path, authorization_header, "");
-    if (const auto *response = std::get_if<iop::Response>(&variant)) {
-        const auto &binary = response->payload();
-        if (!binary) {
+    auto response = network.httpGet(path, authorization_header, "");
+    const auto status = response.status();
+    if (status && *status == iop::NetworkStatus::OK) {
+        const auto binary = response.await().payload;
+        if (binary.size() == 0) {
             network.logger().error(IOP_STR("Upgrade failed, no firmware returned"));
             return driver::UpgradeStatus::BROKEN_SERVER;
         }
@@ -26,7 +27,7 @@ auto Upgrade::run(const iop::Network &network, const iop::StaticString path, con
             return driver::UpgradeStatus::IO_ERROR;
         }
 
-        file.write(binary->begin(), static_cast<std::streamsize>(binary->length()));
+        file.write(reinterpret_cast<const char*>(&binary.front()), static_cast<std::streamsize>(binary.size()));
         if (file.fail()) {
             network.logger().error(IOP_STR("Unable to write to firmware file"));
             return driver::UpgradeStatus::IO_ERROR;
@@ -55,8 +56,8 @@ auto Upgrade::run(const iop::Network &network, const iop::StaticString path, con
 
         network.logger().info(IOP_STR("Upgrading runtime"));
         exit(system(filename.string().c_str()));
-    } else if (const auto *status = std::get_if<int>(&variant)) {
-        network.logger().error(IOP_STR("Invalid status returned by the server on upgrade: "), std::to_string(*status));
+    } else {
+        network.logger().error(IOP_STR("Invalid status returned by the server on upgrade: "), std::to_string(response.code()));
     }
 
     return driver::UpgradeStatus::BROKEN_SERVER;

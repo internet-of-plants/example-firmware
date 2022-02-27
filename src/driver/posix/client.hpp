@@ -28,24 +28,34 @@ auto shiftChars(char* ptr, const size_t start, const size_t end) noexcept {
   memset(ptr + end, '\0', bufferSize - end);
 }
 
-namespace driver {
-auto rawStatus(const int code) noexcept -> RawStatus {
+namespace iop {
+auto Network::codeToString(const int code) const noexcept -> std::string {
   IOP_TRACE();
   switch (code) {
   case 200:
-    return RawStatus::OK;
+    return IOP_STR("OK").toString();
   case 500:
-    return RawStatus::SERVER_ERROR;
+    return IOP_STR("SERVER_ERROR").toString();
   case 403:
-    return RawStatus::FORBIDDEN;
-
-  // We generally don't use default to be able to use static-analyzers to check
-  // for exaustiveness, but this is a switch on a int, so...
-  default:
-    return RawStatus::UNKNOWN;
+    return IOP_STR("FORBIDDEN").toString();
   }
+  return std::to_string(code);
+}
 }
 
+namespace driver {
+auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus> {
+  IOP_TRACE();
+  switch (code) {
+  case 200:
+    return iop::NetworkStatus::OK;
+  case 500:
+    return iop::NetworkStatus::BROKEN_SERVER;
+  case 403:
+    return iop::NetworkStatus::FORBIDDEN;
+  }
+  return std::nullopt;
+}
 HTTPClient::HTTPClient() noexcept: headersToCollect_() {}
 HTTPClient::~HTTPClient() noexcept {}
 
@@ -54,10 +64,7 @@ static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   return write(fd, msg, len);
 }
 
-Session::Session(HTTPClient &http, std::string_view uri, std::shared_ptr<int> fd) noexcept: fd_(std::move(fd)), http(std::ref(http)), headers{}, uri_(uri) { IOP_TRACE(); }
-Session::~Session() noexcept {
-  if (this->fd_.use_count() == 1) close(*this->fd_);
-}
+Session::Session(HTTPClient &http, std::string_view uri, int fd) noexcept: fd_(fd), http(std::ref(http)), headers(), uri_(uri) { IOP_TRACE(); }
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   for (auto & key: headers) {
     // Headers can't be UTF8 so we cool
@@ -89,17 +96,17 @@ void Session::setAuthorization(std::string auth) noexcept  {
   this->headers.emplace(std::string("Authorization"), std::string("Basic ") + auth);
 }
 
-auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> std::variant<Response, int> {
+auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> Response {
   const auto len = data.length();
 
-  if (iop::wifi.status() != driver::StationStatus::GOT_IP) return static_cast<int>(RawStatus::CONNECTION_FAILED);
+  if (iop::wifi.status() != driver::StationStatus::GOT_IP)
+    return Response(iop::NetworkStatus::IO_ERROR);
 
   iop_assert(this->http, IOP_STR("Session has been moved out"));
 
   auto responseHeaders = std::unordered_map<std::string, std::string>();
   auto responsePayload = std::vector<uint8_t>();
   auto status = std::make_optional(1000);
-  const auto fd = *this->fd_;
 
   responseHeaders.reserve(this->http->get().headersToCollect_.size());
 
@@ -107,7 +114,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
     const auto path = std::string_view(this->uri_.begin() + this->uri_.find("/", this->uri_.find("://") + 3));
     clientDriverLogger.debug(IOP_STR("Send request to "), path);
 
-    const auto fd = *this->fd_;
+    const auto fd = this->fd_;
     iop_assert(fd != -1, IOP_STR("Invalid file descriptor"));
     if (clientDriverLogger.level() == iop::LogLevel::TRACE || iop::Log::isTracing())
       iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::START);
@@ -149,7 +156,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
       if (size < bufferSize &&
           (signedSize = read(fd, buffer.get() + size, bufferSize - size)) < 0) {
         clientDriverLogger.error(IOP_STR("Error reading from socket ("), std::to_string(signedSize), IOP_STR("): "), std::to_string(errno), IOP_STR(" - "), strerror(errno)); 
-        return static_cast<int>(RawStatus::CONNECTION_FAILED);
+        return Response(iop::NetworkStatus::IO_ERROR);
       }
       
       size += static_cast<size_t>(signedSize);
@@ -189,7 +196,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
 
       if (firstLine && size < 10) { // len("HTTP/1.1 ") = 9
         clientDriverLogger.error(IOP_STR("Error reading first line: "), std::to_string(size));
-        return static_cast<int>(RawStatus::READ_FAILED);
+        return Response(iop::NetworkStatus::IO_ERROR);
       }
 
       if (firstLine && size > 0) {
@@ -199,7 +206,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
         const auto codeEnd = statusStr.find(" ");
         if (codeEnd == statusStr.npos) {
           clientDriverLogger.error(IOP_STR("Bad server: "), statusStr, IOP_STR(" -- "), buff);
-          return static_cast<int>(RawStatus::READ_FAILED);
+          return Response(iop::NetworkStatus::IO_ERROR);
         }
         status = atoi(std::string(statusStr.begin(), 0, codeEnd).c_str());
         clientDriverLogger.debug(IOP_STR("Status: "), std::to_string(status.value_or(500)));
@@ -212,7 +219,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
       }
       if (!status) {
         clientDriverLogger.error(IOP_STR("No status"));
-        return static_cast<int>(RawStatus::READ_FAILED);
+        return Response(iop::NetworkStatus::IO_ERROR);
       }
       if (!isPayload) {
         //clientDriverLogger.debug(IOP_STR("Buffer: "), buff.substr(0, buff.find("\r\n")));
@@ -258,7 +265,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
           buff = std::string_view(buffer.get(), size);
         } else {
           clientDriverLogger.debug(IOP_STR("Header line too big"));
-          return static_cast<int>(RawStatus::READ_FAILED);
+          return Response(iop::NetworkStatus::IO_ERROR);
         }
       }
 
@@ -272,19 +279,19 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
     }
   }
 
-  clientDriverLogger.debug(IOP_STR("Close client: "), std::to_string(fd));
+  clientDriverLogger.debug(IOP_STR("Close client: "), std::to_string(this->fd_));
   clientDriverLogger.debug(IOP_STR("Status: "), std::to_string(status.value_or(500)));
   iop_assert(status, IOP_STR("Status not available"));
 
   return Response(responseHeaders, Payload(responsePayload), *status);
 }
 
-auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> {    
+auto HTTPClient::begin(std::string_view uri, std::function<Response(Session&)> func) noexcept -> Response {
   struct sockaddr_in serv_addr;
   auto fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     clientDriverLogger.error(IOP_STR("Unable to open socket"));
-    return std::nullopt;
+    return driver::Response(iop::NetworkStatus::IO_ERROR);
   }
 
   iop_assert(uri.find("http://") == 0, IOP_STR("Protocol must be http (no SSL)"));
@@ -298,7 +305,7 @@ auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> 
     port = static_cast<uint16_t>(strtoul(std::string(uri.begin(), portIndex + 1, end).c_str(), nullptr, 10));
     if (port == 0) {
       clientDriverLogger.error(IOP_STR("Unable to parse port, broken server: "), uri);
-     return std::nullopt;
+      return driver::Response(iop::NetworkStatus::BROKEN_SERVER);
     }
   }
   clientDriverLogger.debug(IOP_STR("Port: "), std::to_string(port));
@@ -314,15 +321,28 @@ auto HTTPClient::begin(std::string_view uri) noexcept -> std::optional<Session> 
   // Convert IPv4 and IPv6 addresses from text to binary form
   if(inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0) {
     clientDriverLogger.error(IOP_STR("Address not supported: "), host);
-    return std::nullopt;
+    return driver::Response(iop::NetworkStatus::BROKEN_CLIENT);
   }
 
   auto connection = connect(fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
   if (connection < 0) {
     clientDriverLogger.error(IOP_STR("Unable to connect: "), std::to_string(connection));
-    return std::nullopt;
+    return driver::Response(iop::NetworkStatus::IO_ERROR);
   }
   clientDriverLogger.debug(IOP_STR("Began connection: "), uri);
-  return Session(*this, uri, std::make_shared<int>(fd));
+  auto session = Session(*this, uri, fd);
+  return func(session);
+}
+HTTPClient::HTTPClient(HTTPClient &&other) noexcept: headersToCollect_(std::move(other.headersToCollect_)) {}
+auto HTTPClient::operator==(HTTPClient &&other) noexcept -> HTTPClient & {
+  this->headersToCollect_ = std::move(other.headersToCollect_);
+  return *this;
+}
+auto Session::operator==(Session &&other) noexcept -> Session & {
+  this->fd_ = std::move(other.fd_);
+  this->http = std::move(other.http);
+  this->headers = std::move(other.headers);
+  this->uri_ = std::move(other.uri_);
+  return *this;
 }
 }

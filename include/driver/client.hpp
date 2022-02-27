@@ -2,63 +2,21 @@
 #define IOP_DRIVER_CLIENT_HPP
 
 #include "driver/string.hpp"
-#include <vector>
+#include "driver/response.hpp"
+#include <functional>
 #include <string>
-#include <unordered_map>
 #include <optional>
 #include <memory>
 
 class HTTPClient;
 
 namespace driver {
-enum class RawStatus {
-  CONNECTION_FAILED = -1,
-  SEND_FAILED = -2,
-  READ_FAILED = -3,
-  ENCODING_NOT_SUPPORTED = -4,
-  NO_SERVER = -5,
-  READ_TIMEOUT = -6,
-  CONNECTION_LOST = -7,
-
-  OK = 200,
-  SERVER_ERROR = 500,
-  FORBIDDEN = 403,
-
-  UNKNOWN = 999
-};
-
-auto rawStatus(int code) noexcept -> RawStatus;
-auto rawStatusToString(RawStatus status) noexcept -> iop::StaticString;
-
-class Payload {
-public:
-  std::vector<uint8_t> payload;
-  Payload() noexcept: payload({}) {}
-  explicit Payload(std::vector<uint8_t> data) noexcept: payload(std::move(data)) {}
-};
-
-class Response {
-  std::unordered_map<std::string, std::string> headers_;
-  Payload promise;
-  int status_;
-
-public:
-  Response(std::unordered_map<std::string, std::string> headers, const Payload payload, const int status) noexcept: headers_(headers), promise(payload), status_(status) {}
-  explicit Response(const int status) noexcept: status_(status) {}
-  auto status() const noexcept -> int { return this->status_; }
-  auto header(iop::StaticString key) const noexcept -> std::optional<std::string>;
-  auto await() noexcept -> Payload {
-    // TODO: make it actually lazy
-    return std::move(this->promise);
-  }
-};
-
 class HTTPClient;
 
 // References HTTPClient, should never outlive it
 class Session {
   #ifdef IOP_POSIX
-  std::shared_ptr<int> fd_;
+  int fd_;
   #endif
 
   #ifndef IOP_NOOP
@@ -68,7 +26,7 @@ class Session {
   #endif
 
   #ifdef IOP_POSIX
-  Session(HTTPClient &http, std::string_view uri, std::shared_ptr<int> fd) noexcept;
+  Session(HTTPClient &http, std::string_view uri, int fd) noexcept;
   #elif defined(IOP_ESP8266)
   Session(HTTPClient &http, std::string_view uri) noexcept;
   #elif defined(IOP_NOOP)
@@ -86,8 +44,12 @@ public:
   void addHeader(std::string_view key, std::string_view value) noexcept;
   void setAuthorization(std::string auth) noexcept;
   // How to represent that this moves the server out
-  auto sendRequest(std::string method, std::string_view data) noexcept -> std::variant<Response, int>;
-  ~Session() noexcept;
+  auto sendRequest(std::string method, std::string_view data) noexcept -> Response;
+  Session(Session &&other) noexcept = default;
+  Session(const Session &other) noexcept = delete;
+  auto operator==(Session &&other) noexcept -> Session &;
+  auto operator==(const Session &other) noexcept -> Session & = delete;
+  ~Session() noexcept = default;
 };
 
 class HTTPClient {
@@ -102,9 +64,13 @@ class HTTPClient {
 public:
   HTTPClient() noexcept;
   ~HTTPClient() noexcept;
-  auto begin(std::string_view uri) noexcept -> std::optional<Session>;
+  auto begin(std::string_view uri, std::function<Response(Session &)> func) noexcept -> Response;
   auto headersToCollect(std::vector<std::string> headers) noexcept -> void;
 
+  HTTPClient(HTTPClient &&other) noexcept;
+  HTTPClient(const HTTPClient &other) noexcept = delete;
+  auto operator==(HTTPClient &&other) noexcept -> HTTPClient &;
+  auto operator==(const HTTPClient &other) noexcept -> HTTPClient & = delete;
   friend Session;
 };
 }

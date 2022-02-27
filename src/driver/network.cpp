@@ -2,6 +2,7 @@
 #include "driver/cert_store.hpp"
 #include "driver/thread.hpp"
 #include "driver/upgrade.hpp"
+#include "driver/panic.hpp"
 
 constexpr static iop::UpgradeHook defaultHook(iop::UpgradeHook::defaultHook);
 
@@ -39,72 +40,21 @@ void Network::disconnect() noexcept {
   return iop::wifi.disconnectFromAccessPoint();
 }
 
-auto Network::httpPost(std::string_view token, const StaticString path, std::string_view data) const noexcept -> std::variant<Response, int> {
+auto Network::httpPost(std::string_view token, const StaticString path, std::string_view data) const noexcept -> driver::Response {
   return this->httpRequest(HttpMethod::POST, token, path, data);
 }
 
-auto Network::httpPost(StaticString path, std::string_view data) const noexcept -> std::variant<Response, int> {
+auto Network::httpPost(StaticString path, std::string_view data) const noexcept -> driver::Response {
   return this->httpRequest(HttpMethod::POST, std::nullopt, path, data);
 }
 
-auto Network::httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int> {
+auto Network::httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> driver::Response {
   return this->httpRequest(HttpMethod::GET, token, path, data);
-}
-
-auto Network::apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus> {
-  IOP_TRACE();
-  switch (raw) {
-  case driver::RawStatus::CONNECTION_FAILED:
-  case driver::RawStatus::CONNECTION_LOST:
-    this->logger().warn(IOP_STR("Connection failed. Code: "), std::to_string(static_cast<int>(raw)));
-    return NetworkStatus::IO_ERROR;
-
-  case driver::RawStatus::SEND_FAILED:
-  case driver::RawStatus::READ_FAILED:
-    this->logger().warn(IOP_STR("Pipe is broken. Code: "), std::to_string(static_cast<int>(raw)));
-    return NetworkStatus::IO_ERROR;
-
-  case driver::RawStatus::ENCODING_NOT_SUPPORTED:
-  case driver::RawStatus::NO_SERVER:
-  case driver::RawStatus::SERVER_ERROR:
-    this->logger().error(IOP_STR("Server is broken. Code: "), std::to_string(static_cast<int>(raw)));
-    return NetworkStatus::BROKEN_SERVER;
-
-  case driver::RawStatus::READ_TIMEOUT:
-    this->logger().warn(IOP_STR("Network timeout triggered"));
-    return NetworkStatus::IO_ERROR;
-
-  case driver::RawStatus::OK:
-    return NetworkStatus::OK;
-
-  case driver::RawStatus::FORBIDDEN:
-    return NetworkStatus::FORBIDDEN;
-
-  case driver::RawStatus::UNKNOWN:
-    break;
-  }
-  return std::nullopt;
 }
 
 Network::Network(StaticString uri, const LogLevel &logLevel) noexcept
   : logger_(logLevel, IOP_STR("NETWORK")), uri_(uri) {
   IOP_TRACE();
-}
-
-Response::Response(const NetworkStatus &status) noexcept
-    : status_(status), payload_(std::nullopt) {
-  IOP_TRACE();
-}
-Response::Response(const NetworkStatus &status, std::vector<uint8_t> payload) noexcept
-    : status_(status), payload_(payload) {
-  IOP_TRACE();
-}
-auto Response::status() const noexcept -> NetworkStatus {
-  return this->status_;
-}
-auto Response::payload() const noexcept -> std::optional<std::string_view> {
-  if (!this->payload_) return std::nullopt;
-  return iop::to_view(*this->payload_);
 }
 }
 
@@ -128,7 +78,7 @@ static auto methodToString(const HttpMethod &method) noexcept -> StaticString;
 auto Network::httpRequest(const HttpMethod method_,
                           const std::optional<std::string_view> &token, StaticString path,
                           const std::optional<std::string_view> &data) const noexcept
-    -> std::variant<Response, int> {
+    -> driver::Response {
   IOP_TRACE();
   Network::setup();
 
@@ -145,75 +95,65 @@ auto Network::httpRequest(const HttpMethod method_,
     this->logger().debug(*data);
   
   this->logger().debug(IOP_STR("Begin"));
-  auto maybeSession = http.begin(uri);
-  if (!maybeSession) {
-    this->logger().warn(IOP_STR("Failed to begin http connection to "), iop::to_view(uri));
-    return Response(NetworkStatus::IO_ERROR);
-  }
-  auto &session = *maybeSession;
-  this->logger().trace(IOP_STR("Began HTTP connection"));
+  const auto func = [this, token, data, data_, method](driver::Session & session) {
+    this->logger().trace(IOP_STR("Began HTTP connection"));
 
-  if (token) {
-    session.setAuthorization(std::string(*token));
-  }
+    if (token) {
+      session.setAuthorization(std::string(*token));
+    }
 
-  // Currently only JSON is supported
-  if (data)
-    session.addHeader(IOP_STR("Content-Type"), IOP_STR("application/json"));
+    // Currently only JSON is supported
+    if (data)
+      session.addHeader(IOP_STR("Content-Type"), IOP_STR("application/json"));
 
-  // Authentication headers, identifies device and detects updates, perf
-  // monitoring
-  {
-    auto str = iop::to_view(driver::device.firmwareMD5());
-    session.addHeader(IOP_STR("VERSION"), str);
-    session.addHeader(IOP_STR("x-ESP8266-sketch-md5"), str);
+    // Authentication headers, identifies device and detects updates, perf
+    // monitoring
+    {
+      auto str = iop::to_view(driver::device.firmwareMD5());
+      session.addHeader(IOP_STR("VERSION"), str);
+      session.addHeader(IOP_STR("x-ESP8266-sketch-md5"), str);
 
-    str = iop::to_view(driver::device.macAddress());
-    session.addHeader(IOP_STR("MAC_ADDRESS"), str);
-  }
-   
-  {
-    // Could this cause memory fragmentation?
-    auto memory = driver::device.availableMemory();
+      str = iop::to_view(driver::device.macAddress());
+      session.addHeader(IOP_STR("MAC_ADDRESS"), str);
+    }
     
-    session.addHeader(IOP_STR("FREE_STACK"), std::to_string(memory.availableStack));
+    {
+      // Could this cause memory fragmentation?
+      auto memory = driver::device.availableMemory();
+      
+      session.addHeader(IOP_STR("FREE_STACK"), std::to_string(memory.availableStack));
 
-    for (const auto & item: memory.availableHeap) {
-      session.addHeader(IOP_STR("FREE_").toString().append(item.first), std::to_string(item.second));
+      for (const auto & item: memory.availableHeap) {
+        session.addHeader(IOP_STR("FREE_").toString().append(item.first), std::to_string(item.second));
+      }
+      for (const auto & item: memory.biggestHeapBlock) {
+        session.addHeader(IOP_STR("BIGGEST_BLOCK_").toString().append(item.first), std::to_string(item.second));
+      }
     }
-    for (const auto & item: memory.biggestHeapBlock) {
-      session.addHeader(IOP_STR("BIGGEST_BLOCK_").toString().append(item.first), std::to_string(item.second));
+    session.addHeader(IOP_STR("VCC"), std::to_string(driver::device.vcc()));
+    session.addHeader(IOP_STR("TIME_RUNNING"), std::to_string(driver::thisThread.timeRunning()));
+    session.addHeader(IOP_STR("ORIGIN"), this->uri());
+    session.addHeader(IOP_STR("DRIVER"), driver::device.platform());
+
+    this->logger().debug(IOP_STR("Making HTTP request"));
+
+    auto response = session.sendRequest(method.toString(), data_);
+
+    const auto status = response.status();
+    if (!status) {
+      return driver::Response(response.code());
     }
-  }
-  session.addHeader(IOP_STR("VCC"), std::to_string(driver::device.vcc()));
-  session.addHeader(IOP_STR("TIME_RUNNING"), std::to_string(driver::thisThread.timeRunning()));
-  session.addHeader(IOP_STR("ORIGIN"), this->uri());
-  session.addHeader(IOP_STR("DRIVER"), driver::device.platform());
-
-  this->logger().debug(IOP_STR("Making HTTP request"));
-
-  auto responseVariant = session.sendRequest(method.toString(), data_);
-  if (const auto *error = std::get_if<int>(&responseVariant)) {
-    return *error;
-  } else if (auto *response = std::get_if<driver::Response>(&responseVariant)) {
+  
     this->logger().debug(IOP_STR("Made HTTP request")); 
 
     // Handle system upgrade request
-    const auto upgrade = response->header(IOP_STR("LATEST_VERSION"));
+    const auto upgrade = response.header(IOP_STR("LATEST_VERSION"));
     if (upgrade && upgrade != iop::to_view(driver::device.firmwareMD5())) {
       this->logger().info(IOP_STR("Scheduled upgrade"));
       hook.schedule();
     }
-
-    // TODO: move this to inside driver::HTTPClient logic
-    const auto rawStatus = driver::rawStatus(response->status());
-    if (rawStatus == driver::RawStatus::UNKNOWN) {
-      this->logger().warn(IOP_STR("Unknown response code: "), std::to_string(response->status()));
-    }
-    
-    const auto rawStatusStr = driver::rawStatusToString(rawStatus);
-
-    this->logger().debug(IOP_STR("Response code ("), iop::to_view(std::to_string(response->status())), IOP_STR("): "), rawStatusStr);
+  
+    this->logger().debug(IOP_STR("Response code: "), iop::to_view(this->codeToString(response.code())));
 
     // TODO: this is broken because it's not lazy, it should be a HTTPClient setting that bails out if it's bigger, and encapsulated in the API
     /*
@@ -222,23 +162,22 @@ auto Network::httpRequest(const HttpMethod method_,
       globalData.http().end();
       const auto lengthStr = std::to_string(response.payload.length());
       this->logger().error(IOP_STR("Payload from server was too big: "), lengthStr);
-      globalData.response() = Response(NetworkStatus::BROKEN_SERVER);
+      globalData.response() = driver::Response(NetworkStatus::BROKEN_SERVER);
       return globalData.response();
     }
     */
 
     // We have to simplify the errors reported by this API (but they are logged)
-    const auto maybeApiStatus = this->apiStatus(rawStatus);
-    if (maybeApiStatus) {
+    if (*status == iop::NetworkStatus::OK) {
       // The payload is always downloaded, since we check for its size and the
       // origin is trusted. If it's there it's supposed to be there.
-      auto payload = std::move(response->await().payload);
-      this->logger().debug(IOP_STR("Payload (") , std::to_string(payload.size()), IOP_STR("): "), iop::to_view(iop::scapeNonPrintable(iop::to_view(payload).substr(0, payload.size() > 30 ? 30 : payload.size()))));
-      return Response(*maybeApiStatus, std::move(payload));
+      const auto payload = std::move(response.await().payload);
+      this->logger().debug(IOP_STR("Payload (") , iop::to_view(std::to_string(payload.size())), IOP_STR("): "), iop::to_view(iop::scapeNonPrintable(iop::to_view(payload).substr(0, payload.size() > 30 ? 30 : payload.size()))));
+      return driver::Response(driver::Payload(payload), *status);
     }
-    return response->status();
-  }
-  iop_panic(IOP_STR("Invalid variant types"));
+    return driver::Response(response.code());
+  };
+  return http.begin(uri, func);
 }
 
 void Network::setup() const noexcept {

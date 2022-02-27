@@ -1,7 +1,7 @@
 #ifndef IOP_DRIVER_NETWORK_HPP
 #define IOP_DRIVER_NETWORK_HPP
 
-#include "driver/client.hpp"
+#include "driver/response.hpp"
 #include "driver/wifi.hpp"
 #include "driver/cert_store.hpp"
 #include "driver/log.hpp"
@@ -10,16 +10,6 @@
 
 namespace iop {
 extern driver::Wifi wifi;
-
-/// Higher level error reporting. Lower level is handled by core
-enum class NetworkStatus {
-  IO_ERROR,
-  BROKEN_SERVER,
-  BROKEN_CLIENT,
-
-  OK,
-  FORBIDDEN,
-};
 
 /// Hook to schedule the next firmware binary update (_must not_ actually update, but only use it to schedule an update for the next loop run)
 ///
@@ -33,17 +23,6 @@ public:
 
   /// No-Op
   static void defaultHook() noexcept;
-};
-
-
-class Response {
-  NetworkStatus status_;
-  std::optional<std::vector<uint8_t>> payload_;
-public:
-  auto status() const noexcept -> NetworkStatus;
-  auto payload() const noexcept -> std::optional<std::string_view>;
-  explicit Response(const NetworkStatus &status) noexcept;
-  Response(const NetworkStatus &status, std::vector<uint8_t> payload) noexcept;
 };
 
 enum class HttpMethod {
@@ -70,7 +49,7 @@ class Network {
   StaticString uri_;
 
   /// Sends a custom HTTP request that may be authenticated to the monitor server (primitive used by higher level methods)
-  auto httpRequest(HttpMethod method, const std::optional<std::string_view> &token, StaticString path, const std::optional<std::string_view> &data) const noexcept -> std::variant<Response, int>;
+  auto httpRequest(HttpMethod method, const std::optional<std::string_view> &token, StaticString path, const std::optional<std::string_view> &data) const noexcept -> driver::Response;
 public:
   Network(StaticString uri, const LogLevel &logLevel) noexcept;
 
@@ -97,19 +76,19 @@ public:
   static auto isConnected() noexcept -> bool;
 
   /// Sends an HTTP post that is authenticated to the monitor server.
-  auto httpPost(std::string_view token, StaticString path, std::string_view data) const noexcept -> std::variant<Response, int>;
+  auto httpPost(std::string_view token, StaticString path, std::string_view data) const noexcept -> driver::Response;
 
   /// Sends an HTTP post that is not authenticated to the monitor server (used for authentication).
-  auto httpPost(StaticString path, std::string_view data) const noexcept -> std::variant<Response, int>;
+  auto httpPost(StaticString path, std::string_view data) const noexcept -> driver::Response;
 
   /// Sends an HTTP get that is authenticated to the monitor server (used for authentication).
-  auto httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> std::variant<Response, int>;
+  auto httpGet(StaticString path, std::string_view token, std::string_view data) const noexcept -> driver::Response;
 
   /// Fetches firmware upgrade from the network
   auto upgrade(StaticString path, std::string_view token) const noexcept -> driver::UpgradeStatus;
 
   /// Extracts a network status from the raw response
-  auto apiStatus(const driver::RawStatus &raw) const noexcept -> std::optional<NetworkStatus>;
+  auto codeToString(int code) const noexcept -> std::string;
 
   auto logger() const noexcept -> const Log &;
 };
