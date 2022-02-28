@@ -43,6 +43,21 @@ auto Network::codeToString(const int code) const noexcept -> std::string {
 }
 
 namespace driver{
+class SessionContext {
+public:
+  HTTPClient & http;
+  std::unordered_map<std::string, std::string> headers;
+  std::string_view uri;
+
+  SessionContext(HTTPClient &http, std::string_view uri) noexcept: http(http), headers({}), uri(uri) {}
+
+  SessionContext(SessionContext &&other) noexcept = delete;
+  SessionContext(const SessionContext &other) noexcept = delete;
+  auto operator==(SessionContext &&other) noexcept -> SessionContext & = delete;
+  auto operator==(const SessionContext &other) noexcept -> SessionContext & = delete;
+  ~SessionContext() noexcept = default;
+};
+
 auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus> {
   IOP_TRACE();
   switch (code) {
@@ -68,7 +83,6 @@ auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus>
   return std::nullopt;
 }
 
-Session::Session(HTTPClient &http, std::string_view uri) noexcept: http(std::ref(http)), uri_(uri) { IOP_TRACE(); }
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   iop_assert(this->http, IOP_STR("HTTP client is nullptr"));
   std::vector<const char*> normalized;
@@ -84,50 +98,50 @@ auto Response::header(iop::StaticString key) const noexcept -> std::optional<std
   return std::move(value->second);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
-  this->http->get().http->addHeader(String(key.get()), String(value.get()));
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
+  this->ctx.http.http->addHeader(String(key.get()), String(value.get()));
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
   String val;
   val.concat(value.begin(), value.length());
-  this->http->get().http->addHeader(String(key.get()), val);
+  this->ctx.http.http->addHeader(String(key.get()), val);
 }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
   String header;
   header.concat(key.begin(), key.length());
-  this->http->get().http->addHeader(header, String(value.get()));
+  this->ctx.http.http->addHeader(header, String(value.get()));
 }
 void Session::addHeader(std::string_view key, std::string_view value) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
   String val;
   val.concat(value.begin(), value.length());
 
   String header;
   header.concat(key.begin(), key.length());
-  this->http->get().http->addHeader(header, val);
+  this->ctx.http.http->addHeader(header, val);
 }
 void Session::setAuthorization(std::string auth) noexcept {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
-  this->http->get().http->setAuthorization(auth.c_str());
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
+  this->ctx.http.http->setAuthorization(auth.c_str());
 }
 auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> Response {
-  iop_assert(this->http && this->http->get().http, IOP_STR("Session has been moved out"));
-  const auto code = this->http->get().http->sendRequest(method.c_str(), reinterpret_cast<const uint8_t*>(data.begin()), data.length());
+  iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
+  const auto code = this->ctx.http.http->sendRequest(method.c_str(), reinterpret_cast<const uint8_t*>(data.begin()), data.length());
   if (code < 0) {
     return Response(code);
   }
 
   std::unordered_map<std::string, std::string> headers;
-  headers.reserve(this->http->get().http->headers());
-  for (int index = 0; index < this->http->get().http->headers(); ++index) {
-    const auto key = std::string(this->http->get().http->headerName(index).c_str());
-    const auto value = std::string(this->http->get().http->header(index).c_str());
+  headers.reserve(this->ctx.http.http->headers());
+  for (int index = 0; index < this->ctx.http.http->headers(); ++index) {
+    const auto key = std::string(this->ctx.http.http->headerName(index).c_str());
+    const auto value = std::string(this->ctx.http.http->header(index).c_str());
     headers[key] = value;
   }
 
-  const auto httpString = this->http->get().http->getString();
+  const auto httpString = this->ctx.http.http->getString();
   auto storage = std::vector<uint8_t>();
   storage.insert(storage.end(), httpString.c_str(), httpString.c_str() + httpString.length());
   const auto payload = Payload(storage);
@@ -186,7 +200,8 @@ auto HTTPClient::begin(const std::string_view uri, std::function<Response(Sessio
   auto uriArduino = String();
   uriArduino.concat(uri.begin(), uri.length());
   if (this->http->begin(*iop::wifi.client, uriArduino)) {
-    auto session = Session(*this, uri);
+    auto ctx = SessionContext(*this, uri);
+    auto session = Session(ctx);
     const auto ret = func(session);
     this->http->end();
     return ret;

@@ -29,7 +29,6 @@ auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus>
   }
   return std::nullopt;
 }
-Session::~Session() noexcept {}
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept { (void) headers; }
 auto Response::header(iop::StaticString key) const noexcept -> std::optional<std::string> { (void) key; return std::nullopt; }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept { (void) key; (void) value; }
@@ -42,5 +41,5 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
 HTTPClient::HTTPClient() noexcept {}
 HTTPClient::~HTTPClient() noexcept {}
 
-auto HTTPClient::begin(std::string_view uri, std::function<Response(Session &)> func) noexcept -> Response { (void) uri; return Response(iop::NetworkStatus::OK); }
+auto HTTPClient::begin(std::string_view uri, std::function<Response(Session &)> func) noexcept -> Response { (void) uri; (void) func; return Response(iop::NetworkStatus::OK); }
 }

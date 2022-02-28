@@ -13,27 +13,12 @@ class HTTPClient;
 namespace driver {
 class HTTPClient;
 
+class SessionContext;
+
 // References HTTPClient, should never outlive it
 class Session {
-  #ifdef IOP_POSIX
-  int fd_;
-  #endif
-
-  #ifndef IOP_NOOP
-  std::optional<std::reference_wrapper<HTTPClient>> http;
-  std::unordered_map<std::string, std::string> headers;
-  std::string_view uri_;
-  #endif
-
-  #ifdef IOP_POSIX
-  Session(HTTPClient &http, std::string_view uri, int fd) noexcept;
-  #elif defined(IOP_ESP8266)
-  Session(HTTPClient &http, std::string_view uri) noexcept;
-  #elif defined(IOP_NOOP)
-  Session() noexcept = default;
-  #else
-  #error "Target is not valid"
-  #endif
+  SessionContext &ctx;
+  Session(SessionContext &context) noexcept: ctx(context) {}
 
   friend HTTPClient;
 
@@ -45,9 +30,9 @@ public:
   void setAuthorization(std::string auth) noexcept;
   // How to represent that this moves the server out
   auto sendRequest(std::string method, std::string_view data) noexcept -> Response;
-  Session(Session &&other) noexcept = default;
+  Session(Session &&other) noexcept = delete;
   Session(const Session &other) noexcept = delete;
-  auto operator==(Session &&other) noexcept -> Session &;
+  auto operator==(Session &&other) noexcept -> Session & = delete;
   auto operator==(const Session &other) noexcept -> Session & = delete;
   ~Session() noexcept = default;
 };

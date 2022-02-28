@@ -44,6 +44,22 @@ auto Network::codeToString(const int code) const noexcept -> std::string {
 }
 
 namespace driver {
+class SessionContext {
+public:
+  int fd;
+  std::vector<std::string> headersToCollect;
+  std::unordered_map<std::string, std::string> headers;
+  std::string_view uri;
+
+  SessionContext(int fd, std::vector<std::string> headersToCollect, std::string_view uri) noexcept: fd(fd), headersToCollect(headersToCollect), headers({}), uri(uri) {}
+
+  SessionContext(SessionContext &&other) noexcept = delete;
+  SessionContext(const SessionContext &other) noexcept = delete;
+  auto operator==(SessionContext &&other) noexcept -> SessionContext & = delete;
+  auto operator==(const SessionContext &other) noexcept -> SessionContext & = delete;
+  ~SessionContext() noexcept = default;
+};
+
 auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus> {
   IOP_TRACE();
   switch (code) {
@@ -64,7 +80,6 @@ static ssize_t send(int fd, const char * msg, const size_t len) noexcept {
   return write(fd, msg, len);
 }
 
-Session::Session(HTTPClient &http, std::string_view uri, int fd) noexcept: fd_(fd), http(std::ref(http)), headers(), uri_(uri) { IOP_TRACE(); }
 void HTTPClient::headersToCollect(std::vector<std::string> headers) noexcept {
   for (auto & key: headers) {
     // Headers can't be UTF8 so we cool
@@ -80,20 +95,20 @@ auto Response::header(iop::StaticString key) const noexcept -> std::optional<std
   return this->headers_.at(keyString);
 }
 void Session::addHeader(iop::StaticString key, iop::StaticString value) noexcept  {
-  this->headers.emplace(key.toString(), value.toString());
+  this->ctx.headers.emplace(key.toString(), value.toString());
 }
 void Session::addHeader(iop::StaticString key, std::string_view value) noexcept  {
-  this->headers.emplace(key.toString(), std::string(value));
+  this->ctx.headers.emplace(key.toString(), std::string(value));
 }
 void Session::addHeader(std::string_view key, iop::StaticString value) noexcept  {
-  this->headers.emplace(std::string(key), value.toString());
+  this->ctx.headers.emplace(std::string(key), value.toString());
 }
 void Session::addHeader(std::string_view key, std::string_view value) noexcept  {
-  this->headers.emplace(std::string(key), std::string(value));
+  this->ctx.headers.emplace(std::string(key), std::string(value));
 }
 void Session::setAuthorization(std::string auth) noexcept  {
   if (auth.length() == 0) return;
-  this->headers.emplace(std::string("Authorization"), std::string("Basic ") + auth);
+  this->ctx.headers.emplace(std::string("Authorization"), std::string("Basic ") + auth);
 }
 
 auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> Response {
@@ -102,19 +117,17 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
   if (iop::wifi.status() != driver::StationStatus::GOT_IP)
     return Response(iop::NetworkStatus::IO_ERROR);
 
-  iop_assert(this->http, IOP_STR("Session has been moved out"));
-
   auto responseHeaders = std::unordered_map<std::string, std::string>();
   auto responsePayload = std::vector<uint8_t>();
   auto status = std::make_optional(1000);
 
-  responseHeaders.reserve(this->http->get().headersToCollect_.size());
+  responseHeaders.reserve(this->ctx.headersToCollect.size());
 
   {
-    const auto path = std::string_view(this->uri_.begin() + this->uri_.find("/", this->uri_.find("://") + 3));
+    const auto path = std::string_view(this->ctx.uri.begin() + this->ctx.uri.find("/", this->ctx.uri.find("://") + 3));
     clientDriverLogger.debug(IOP_STR("Send request to "), path);
 
-    const auto fd = this->fd_;
+    const auto fd = this->ctx.fd;
     iop_assert(fd != -1, IOP_STR("Invalid file descriptor"));
     if (clientDriverLogger.level() == iop::LogLevel::TRACE || iop::Log::isTracing())
       iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::START);
@@ -126,7 +139,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
     const auto dataLengthStr = std::to_string(len);
     send(fd, dataLengthStr.c_str(), dataLengthStr.length());
     send(fd, "\r\n", 2);
-    for (const auto& [key, value]: this->headers) {
+    for (const auto& [key, value]: this->ctx.headers) {
       send(fd, key.c_str(), key.length());
       send(fd, ": ", 2);
       send(fd, value.c_str(), value.length());
@@ -237,8 +250,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
           isPayload = true;
         } else if (buff.find("\r\n") != buff.npos) {
           clientDriverLogger.debug(IOP_STR("Found headers (buffer length: "), std::to_string(size), IOP_STR(")"));
-          iop_assert(this->http, IOP_STR("Session has been moved out"));
-          for (const auto &key: this->http->get().headersToCollect_) {
+          for (const auto &key: this->ctx.headersToCollect) {
             if (size < key.length() + 2) continue; // "\r\n"
             std::string headerKey(buff.substr(0, key.length()));
             // Headers can't be UTF8 so we cool
@@ -279,7 +291,7 @@ auto Session::sendRequest(const std::string method, const std::string_view data)
     }
   }
 
-  clientDriverLogger.debug(IOP_STR("Close client: "), std::to_string(this->fd_));
+  clientDriverLogger.debug(IOP_STR("Close client: "), std::to_string(this->ctx.fd));
   clientDriverLogger.debug(IOP_STR("Status: "), std::to_string(status.value_or(500)));
   iop_assert(status, IOP_STR("Status not available"));
 
@@ -330,19 +342,13 @@ auto HTTPClient::begin(std::string_view uri, std::function<Response(Session&)> f
     return driver::Response(iop::NetworkStatus::IO_ERROR);
   }
   clientDriverLogger.debug(IOP_STR("Began connection: "), uri);
-  auto session = Session(*this, uri, fd);
+  auto ctx = SessionContext(fd, this->headersToCollect_, uri);
+  auto session = Session(ctx);
   return func(session);
 }
 HTTPClient::HTTPClient(HTTPClient &&other) noexcept: headersToCollect_(std::move(other.headersToCollect_)) {}
 auto HTTPClient::operator==(HTTPClient &&other) noexcept -> HTTPClient & {
   this->headersToCollect_ = std::move(other.headersToCollect_);
-  return *this;
-}
-auto Session::operator==(Session &&other) noexcept -> Session & {
-  this->fd_ = std::move(other.fd_);
-  this->http = std::move(other.http);
-  this->headers = std::move(other.headers);
-  this->uri_ = std::move(other.uri_);
   return *this;
 }
 }
