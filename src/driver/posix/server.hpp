@@ -371,6 +371,11 @@ void HttpConnection::sendData(iop::StaticString content) const noexcept {
   ::send(*this->currentClient, content.asCharPtr(), content.length());
   if (iop::Log::isTracing()) iop::Log::print(IOP_STR(""), iop::LogLevel::TRACE, iop::LogType::END);
 }
+
+CaptivePortal::CaptivePortal(CaptivePortal &&other) noexcept { (void) other; }
+auto CaptivePortal::operator=(CaptivePortal &&other) noexcept -> CaptivePortal & { (void) other; return *this; }
+CaptivePortal::CaptivePortal() noexcept {}
+CaptivePortal::~CaptivePortal() noexcept {}
 void CaptivePortal::start() noexcept {}
 void CaptivePortal::close() noexcept {}
 void CaptivePortal::handleClient() const noexcept {}

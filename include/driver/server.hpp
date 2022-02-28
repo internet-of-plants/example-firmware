@@ -91,8 +91,7 @@ public:
 };
 
 class CaptivePortal {
-#ifdef IOP_ESP8266
-  DNSServer *server;
+  void *server;
 public:
   CaptivePortal() noexcept;
   ~CaptivePortal() noexcept;
@@ -101,9 +100,7 @@ public:
   CaptivePortal(CaptivePortal &&other) noexcept;
   auto operator=(CaptivePortal &other) noexcept -> CaptivePortal & = delete;
   auto operator=(CaptivePortal &&other) noexcept -> CaptivePortal &;
-#endif
-  
-public:
+
   void start() noexcept;
   void close() noexcept;  
   void handleClient() const noexcept;

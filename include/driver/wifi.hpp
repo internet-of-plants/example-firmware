@@ -8,16 +8,6 @@
 #include <array>
 #include <functional>
 
-#ifdef IOP_ESP8266
-#ifdef IOP_SSL
-namespace BearSSL { class WiFiClientSecure; }
-namespace driver { using NetworkClientPtr = BearSSL::WiFiClientSecure *; }
-#else
-class WiFiClient;
-namespace driver { using NetworkClientPtr = WiFiClient *; }
-#endif
-#endif
-
 namespace driver {
 enum class WiFiMode {
   OFF = 0, STATION, ACCESS_POINT, ACCESS_POINT_AND_STATION
@@ -35,9 +25,7 @@ enum class StationStatus {
 class CertStore;
 
 class Wifi {
-#ifdef IOP_ESP8266
-  driver::NetworkClientPtr client;
-#endif
+  void *client;
 public:
   // Initializes wifi configuration, attaches TLS certificates storage to underlying HTTP code
   auto setup(driver::CertStore *certStore) noexcept -> void;

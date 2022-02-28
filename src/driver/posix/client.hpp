@@ -18,6 +18,10 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#ifdef IOP_SSL
+#error "SSL not supported for desktop right now"
+#endif
+
 constexpr size_t bufferSize = 8192;
 
 static iop::Log clientDriverLogger(iop::LogLevel::DEBUG, IOP_STR("HTTP Client"));

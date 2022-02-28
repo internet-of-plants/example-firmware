@@ -3,15 +3,15 @@
 #include "driver/panic.hpp"
 #include "driver/thread.hpp"
 #include "driver/cert_store.hpp"
-#include "ESP8266WiFi.h"
+#include "driver/esp8266/network_client.hpp"
 
 namespace driver { 
-Wifi::Wifi() noexcept: client(new (std::nothrow) std::remove_pointer<driver::NetworkClientPtr>::type()) {
+Wifi::Wifi() noexcept: client(new (std::nothrow) NetworkClient) {
     iop_assert(client, IOP_STR("OOM"));
 }
 
 Wifi::~Wifi() noexcept {
-    delete this->client;
+    delete static_cast<NetworkClient*>(this->client);
 }
 
 void Wifi::onConnect(std::function<void()> f) noexcept {
@@ -104,7 +104,7 @@ void Wifi::setup(driver::CertStore *certStore) noexcept {
 
   #ifdef IOP_SSL
   iop_assert(certStore && certStore->internal, IOP_STR("CertStore is not set, but SSL is enabled"));
-  this->client->setCertStore(certStore->internal);
+  static_cast<NetworkClient*>(this->client)->setCertStore(certStore->internal);
   #endif
 
   ::WiFi.persistent(false);

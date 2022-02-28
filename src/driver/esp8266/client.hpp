@@ -1,6 +1,7 @@
 #include "driver/client.hpp"
 #include "driver/panic.hpp"
 #include "driver/network.hpp"
+#include "driver/esp8266/network_client.hpp"
 #include "sys/pgmspace.h"
 #include "ESP8266HTTPClient.h"
 #include "WiFiClientSecure.h"
@@ -199,7 +200,7 @@ auto HTTPClient::begin(const std::string_view uri, std::function<Response(Sessio
 
   auto uriArduino = String();
   uriArduino.concat(uri.begin(), uri.length());
-  if (this->http->begin(*iop::wifi.client, uriArduino)) {
+  if (this->http->begin(*static_cast<NetworkClient*>(iop::wifi.client), uriArduino)) {
     auto ctx = SessionContext(*this, uri);
     auto session = Session(ctx);
     const auto ret = func(session);

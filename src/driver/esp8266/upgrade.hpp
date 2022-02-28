@@ -2,6 +2,7 @@
 #include "driver/client.hpp"
 #include "driver/panic.hpp"
 #include "driver/network.hpp"
+#include "driver/esp8266/network_client.hpp"
 
 #include <memory>
 
@@ -10,7 +11,7 @@
 
 namespace driver {
 auto Upgrade::run(const iop::Network &network, const iop::StaticString path, const std::string_view authorization_header) noexcept -> driver::UpgradeStatus {
-  auto *client = iop::wifi.client;
+  auto *client = static_cast<NetworkClient*>(iop::wifi.client);
   iop_assert(client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
   auto ESPhttpUpdate = std::unique_ptr<ESP8266HTTPUpdate>(new (std::nothrow) ESP8266HTTPUpdate());

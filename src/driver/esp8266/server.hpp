@@ -97,22 +97,22 @@ auto CaptivePortal::operator=(CaptivePortal &&other) noexcept -> CaptivePortal &
 }
 CaptivePortal::CaptivePortal() noexcept: server(nullptr) {}
 CaptivePortal::~CaptivePortal() noexcept {
-  delete this->server;
+  delete static_cast<DNSServer*>(this->server);
 }
 void CaptivePortal::start() noexcept {
   const uint16_t port = 53;
   this->server = new (std::nothrow) DNSServer();
   iop_assert(this->server, IOP_STR("Unable to allocate DNSServer"));
-  this->server->setErrorReplyCode(DNSReplyCode::NoError);
-  this->server->start(port, IOP_STR("*").get(), ::WiFi.softAPIP());
+  static_cast<DNSServer*>(this->server)->setErrorReplyCode(DNSReplyCode::NoError);
+  static_cast<DNSServer*>(this->server)->start(port, IOP_STR("*").get(), ::WiFi.softAPIP());
 }
 void CaptivePortal::close() noexcept {
   iop_assert(this->server, IOP_STR("Must initialize DNSServer first"));
-  this->server->stop();
+  static_cast<DNSServer*>(this->server)->stop();
   this->server = nullptr;
 }
 void CaptivePortal::handleClient() const noexcept {
   iop_assert(this->server, IOP_STR("Must initialize DNSServer first"));
-  this->server->processNextRequest();
+  static_cast<DNSServer*>(this->server)->processNextRequest();
 }
 }

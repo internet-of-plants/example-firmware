@@ -14,6 +14,10 @@ void HttpServer::close() noexcept {}
 void HttpServer::handleClient() noexcept {}
 void HttpServer::on(iop::StaticString uri, Callback handler) noexcept { (void) uri; (void) handler; }
 void HttpServer::onNotFound(Callback handler) noexcept { (void) handler; }
+CaptivePortal::CaptivePortal(CaptivePortal &&other) noexcept { (void) other; }
+auto CaptivePortal::operator=(CaptivePortal &&other) noexcept -> CaptivePortal & { (void) other; return *this; }
+CaptivePortal::CaptivePortal() noexcept {}
+CaptivePortal::~CaptivePortal() noexcept {}
 void CaptivePortal::start() noexcept {}
 void CaptivePortal::close() noexcept {}
 void CaptivePortal::handleClient() const noexcept {}

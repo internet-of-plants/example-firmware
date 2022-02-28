@@ -1,13 +1,8 @@
 #ifndef IOP_DRIVER_STRING_STATIC_HPP
 #define IOP_DRIVER_STRING_STATIC_HPP
 
-#ifdef IOP_ESP32
-#include <experimental/string_view>
-#include <experimental/variant>
-#else
 #include <string_view>
 #include <variant>
-#endif
 
 #include <array>
 #include <string>

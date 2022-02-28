@@ -60,10 +60,4 @@ public:
 };
 }
 
-#ifdef IOP_POSIX
-#ifdef IOP_SSL
-#error "SSL not supported for desktop right now"
-#endif
-#endif
-
 #endif
