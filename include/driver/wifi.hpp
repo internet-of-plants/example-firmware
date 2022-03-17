@@ -19,7 +19,6 @@ enum class StationStatus {
   WRONG_PASSWORD,
   NO_AP_FOUND,
   CONNECT_FAIL,
-  NO_SHIELD,
   GOT_IP,
 };
 

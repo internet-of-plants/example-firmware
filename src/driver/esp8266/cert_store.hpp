@@ -46,10 +46,15 @@ public:
       numberOfCertificates(numberOfCertificates) {}
 
   /// Finds cert in list
-  auto cert(uint16_t index) const noexcept -> Cert;
+  auto cert(uint16_t index) const noexcept -> Cert {
+    // NOLINTNEXTLINE cppcoreguidelines-pro-bounds-pointer-a  rithmetic
+    return Cert(this->certs[index], this->indexes[index], this->sizes[index]);
+  }
 
   /// Counts number of certs in list
-  auto count() const noexcept -> uint16_t;
+  auto count() const noexcept -> uint16_t {
+    return this->numberOfCertificates;
+  }
 };
 
 constexpr const uint8_t hashSize = 32;
