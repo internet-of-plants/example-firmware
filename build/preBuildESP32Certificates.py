@@ -48,7 +48,7 @@ def preBuildCertificates(env):
         except Exception:
             raise Exception("Unable to find or install cryptography python library, and no certificates are available locally")
 
-    ca_bundle_bin_file = 'build/x509_crt_bundle.bin'
+    ca_bundle_bin_file = 'x509_crt_bundle.bin'
     quiet = False
 
     class CertificateBundle:

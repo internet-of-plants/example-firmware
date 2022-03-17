@@ -11,7 +11,7 @@ using NetworkClient = WiFiClientSecure;
 using NetworkClient = WiFiClient;
 #endif
 
-extern const uint8_t rootca_crt_bundle_start[] asm("_binary_data_cert_x509_crt_bundle_bin_start");
+extern const uint8_t rootca_crt_bundle_start[] asm("_binary_x509_crt_bundle_bin_start");
 
 namespace driver { 
 Wifi::Wifi() noexcept: client(new (std::nothrow) NetworkClient) {
@@ -110,8 +110,7 @@ void Wifi::setup(driver::CertStore *certStore) noexcept {
 
   #ifdef IOP_SSL
   iop_assert(rootca_crt_bundle_start, IOP_STR("Cert Bundle is null, but SSL is enabled"));
-  //esp_crt_bundle_set(bundle);
-  //static_cast<NetworkClient*>(this->client)->setCACertBundle(rootca_crt_bundle_start);
+  static_cast<NetworkClient*>(this->client)->setCACertBundle(rootca_crt_bundle_start);
   #endif
 
   ::WiFi.persistent(false);

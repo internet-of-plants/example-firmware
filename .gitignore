@@ -9,3 +9,4 @@ __pycache__
 include/configuration.hpp
 workspace.code-workspace
 eeprom.dat
+x509_crt_bundle.bin
