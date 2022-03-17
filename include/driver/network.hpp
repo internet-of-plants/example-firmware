@@ -3,7 +3,6 @@
 
 #include "driver/response.hpp"
 #include "driver/wifi.hpp"
-#include "driver/cert_store.hpp"
 #include "driver/log.hpp"
 
 #include <vector>
@@ -41,8 +40,6 @@ enum class HttpMethod {
 ///
 /// Higher level than the simple ESP8266 client network abstractions, but still focused on the HTTP(S) protocol
 ///
-/// _Must call_ `iop::Network::setCertStore` otherwise TLS won't work. It _will_ panic.
-///
 /// `iop::Network::setUpgradeHook` to set the hook that is called to schedule updates.
 class Network {
   Log logger_;
@@ -55,13 +52,6 @@ public:
 
   auto setup() const noexcept -> void;
   auto uri() const noexcept -> StaticString { return this->uri_; };
-
-  /// Sets static CertStore that will handle TLS requests (find the appropriate cert for the connection)
-  ///
-  /// Ensure to sync NTP before using TLS (or it will report an invalid date for the certificates)
-  ///
-  /// UB if it Network outlives it
-  static void setCertStore(driver::CertStore &store) noexcept;
 
   /// Sets new firmware update hook for this. Very useful to support upgrades
   /// reported by the network (LAST_VERSION header different than current

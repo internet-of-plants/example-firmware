@@ -29,7 +29,7 @@ class Wifi {
   void *client;
 public:
   // Initializes wifi configuration, attaches TLS certificates storage to underlying HTTP code
-  auto setup(driver::CertStore *certStore) noexcept -> void;
+  auto setup() noexcept -> void;
 
   // TODO: document this
   

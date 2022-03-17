@@ -1,5 +1,4 @@
 #include "driver/network.hpp"
-#include "driver/cert_store.hpp"
 #include "driver/thread.hpp"
 #include "driver/upgrade.hpp"
 #include "driver/panic.hpp"
@@ -7,7 +6,6 @@
 constexpr static iop::UpgradeHook defaultHook(iop::UpgradeHook::defaultHook);
 
 static iop::UpgradeHook hook(defaultHook);
-static driver::CertStore * maybeCertStore = nullptr;
 
 namespace iop {
 driver::Wifi wifi;
@@ -19,9 +17,6 @@ auto Network::upgrade(StaticString path, std::string_view token) const noexcept 
   return driver::Upgrade::run(*this, path, token);
 }
 void UpgradeHook::defaultHook() noexcept { IOP_TRACE(); }
-void Network::setCertStore(driver::CertStore &store) noexcept {
-  maybeCertStore = &store;
-}
 void Network::setUpgradeHook(UpgradeHook scheduler) noexcept {
   hook = std::move(scheduler);
 }
@@ -188,7 +183,7 @@ void Network::setup() const noexcept {
 
   http.headersToCollect({"LATEST_VERSION"});
 
-  iop::wifi.setup(maybeCertStore);
+  iop::wifi.setup();
 }
 
 static auto methodToString(const HttpMethod &method) noexcept -> StaticString {

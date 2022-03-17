@@ -2,7 +2,6 @@
 #include "driver/client.hpp"
 #include "driver/server.hpp"
 #include "driver/panic.hpp"
-#include "generated/certificates.hpp"
 #include "utils.hpp"
 #include "loop.hpp"
 #include <string>
@@ -64,11 +63,6 @@ auto Api::setup() const noexcept -> void {
 
   // Sets scheduler for upgrade interrupt
   iop::Network::setUpgradeHook(iop::UpgradeHook(upgradeScheduler));
-
-#ifdef IOP_SSL
-  static driver::CertStore certStore(generated::certList);
-  this->network.setCertStore(certStore);
-#endif
 
   this->network.setup();
 #endif

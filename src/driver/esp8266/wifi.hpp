@@ -3,7 +3,7 @@
 #include "driver/thread.hpp"
 
 #include "ESP8266WiFi.h"
-#include "driver/cert_store.hpp"
+#include "driver/esp8266/generated/certificates.hpp"
 #ifdef IOP_SSL
 using NetworkClient = BearSSL::WiFiClientSecure;
 #else
@@ -105,12 +105,12 @@ std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noex
     return std::make_pair(ssid, psk);
 }
 
-void Wifi::setup(driver::CertStore *certStore) noexcept {
+void Wifi::setup() noexcept {
   iop_assert(this->client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
-  #ifdef IOP_SSL
-  iop_assert(certStore && certStore->internal, IOP_STR("CertStore is not set, but SSL is enabled"));
-  static_cast<NetworkClient*>(this->client)->setCertStore(reinterpret_cast<BearSSL::CertStoreBase*>(certStore->internal));
+#ifdef IOP_SSL
+  static driver::CertStore certStore(generated::certList);
+  static_cast<NetworkClient*>(this->client)->setCertStore(&certStore);
   #endif
 
   ::WiFi.persistent(false);

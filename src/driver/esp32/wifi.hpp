@@ -108,7 +108,7 @@ std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noex
     return std::make_pair(ssid, psk);
 }
 
-void Wifi::setup(driver::CertStore *certStore) noexcept {
+void Wifi::setup() noexcept {
   iop_assert(this->client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
   #ifdef IOP_SSL

@@ -19,7 +19,7 @@ std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noex
     psk = { 'P', 'S', 'K' };
     return std::make_pair(ssid, psk);
 }
-void Wifi::setup(driver::CertStore *certStore) noexcept { (void) certStore; }
+void Wifi::setup() noexcept {}
 
 auto Wifi::enableOurAccessPoint(std::string_view ssid, std::string_view psk) const noexcept -> void { (void) ssid; (void) psk; }
 auto Wifi::disableOurAccessPoint() const noexcept -> void {}

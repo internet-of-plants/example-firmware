@@ -27,7 +27,7 @@ std::string Wifi::ourAccessPointIp() const noexcept {
 void Wifi::enableOurAccessPoint(std::string_view ssid, std::string_view psk) const noexcept { (void) ssid; (void) psk; }
 auto Wifi::disableOurAccessPoint() const noexcept -> void {}
 bool Wifi::connectToAccessPoint(std::string_view ssid, std::string_view psk) const noexcept { (void) ssid; (void) psk; return true; }
-void Wifi::setup(driver::CertStore *certStore) noexcept { (void)certStore; }
+void Wifi::setup() noexcept {}
 void Wifi::setMode(WiFiMode mode) const noexcept { (void) mode; }
 void Wifi::onConnect(std::function<void()> f) noexcept { (void) f; }
 }
