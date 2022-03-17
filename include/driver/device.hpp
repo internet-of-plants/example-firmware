@@ -4,31 +4,13 @@
 #include "driver/string.hpp"
 #include <stdint.h>
 #include <array>
-#include <map>
 
 namespace driver {
-/// Describes the device's memory state in an instant.
-struct Memory {
-  uintmax_t availableStack;
-  // It's a map because some environments have multiple, specialized, RAMs.
-  // This allocation sucks tho. The keys should have static lifetime
-  std::map<std::string_view, uintmax_t> availableHeap;
-  std::map<std::string_view, uintmax_t> biggestHeapBlock;
-
-  Memory(uintmax_t stack, std::map<std::string_view, uintmax_t> heap, std::map<std::string_view, uintmax_t> biggestBlock) noexcept:
-    availableStack(stack), availableHeap(heap), biggestHeapBlock(biggestBlock) {}
-};
-
 /// High level abstraction to manage and monitor device resources
 class Device {
 public:
   /// Measures current storage available in the device. Depending on the device it might be flash memory, HDD, SSD, etc.
   auto availableStorage() const noexcept -> uintmax_t;
-
-  /// Measures current memory usage by the device
-  ///
-  /// This is very important for monitoring heap fragmentation as the device runs for a long time
-  auto availableMemory() const noexcept -> Memory;
 
   /// Measures current VCC usage by the device, some platforms may return UINT16_MAX as they don't have an API for monitoring it.
   auto vcc() const noexcept -> uint16_t;

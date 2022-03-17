@@ -10,7 +10,7 @@
 class sockaddr_in;
 #elif defined(IOP_ESP8266)
 class DNSServer;
-#elif defined(IOP_NOOP)
+#elif defined(IOP_NOOP) ||  defined(IOP_ESP32)
 #else
 #error "Target not supported"
 #endif
@@ -27,7 +27,7 @@ public:
   std::string currentRoute;
   
   using Buffer = std::array<char, 1024>;
-#elif defined(IOP_ESP8266)
+#elif defined(IOP_ESP8266) || defined(IOP_ESP32)
 private:
   void *server; // ESP8266WebServer
 public:
@@ -68,7 +68,7 @@ private:
 
   std::optional<int> maybeFD;
   sockaddr_in *address;
-#elif defined(IOP_ESP8266)
+#elif defined(IOP_ESP8266) || defined(IOP_ESP32)
   void *server; // ESP8266WebServer
 public:
   HttpServer(HttpServer &other) noexcept = delete;

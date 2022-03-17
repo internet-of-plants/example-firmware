@@ -1,5 +1,6 @@
 #include "driver/string.hpp"
-#include "pgmspace.h"
+
+#include <Arduino.h>
 
 namespace iop {
 auto StaticString::toString() const noexcept -> std::string {

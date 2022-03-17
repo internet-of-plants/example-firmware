@@ -6,7 +6,7 @@ import subprocess
 import inspect, os.path
 from os.path import join, realpath
 
-from preBuildCertificates import preBuildCertificates
+from preBuildESP32Certificates import preBuildCertificates
 from preBuildExampleFile import preBuildExampleFile
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename

@@ -2,7 +2,6 @@
 #include "driver/thread.hpp"
 #include "driver/panic.hpp"
 
-// POSIX
 #include <sys/resource.h>
 
 static char * filename;

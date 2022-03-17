@@ -2,14 +2,16 @@
 #include "driver/panic.hpp"
 #include "driver/thread.hpp"
 
-#include "ESP8266WiFi.h"
-#include "driver/cert_store.hpp"
+#include "WiFi.h"
+
 #ifdef IOP_SSL
-using NetworkClient = BearSSL::WiFiClientSecure;
+#include "WiFiClientSecure.h"
+using NetworkClient = WiFiClientSecure;
 #else
 using NetworkClient = WiFiClient;
 #endif
 
+extern const uint8_t rootca_crt_bundle_start[] asm("_binary_data_cert_x509_crt_bundle_bin_start");
 
 namespace driver { 
 Wifi::Wifi() noexcept: client(new (std::nothrow) NetworkClient) {
@@ -21,10 +23,13 @@ Wifi::~Wifi() noexcept {
 }
 
 void Wifi::onConnect(std::function<void()> f) noexcept {
+  // TODO
+  /*
   ::WiFi.onStationModeGotIP([f](const ::WiFiEventStationModeGotIP &ev) {
       (void) ev;
       f();
   });
+  */
 }
 
 Wifi::Wifi(Wifi &&other) noexcept: client(other.client) {
@@ -38,21 +43,20 @@ auto Wifi::operator=(Wifi &&other) noexcept -> Wifi & {
 }
 
 StationStatus Wifi::status() const noexcept {
-    const auto s = wifi_station_get_connect_status();
-    switch (static_cast<int>(s)) {
-        case STATION_IDLE:
+    const auto s = ::WiFi.status();
+    switch (s) {
+        case WL_IDLE_STATUS:
+        case WL_SCAN_COMPLETED:
             return StationStatus::IDLE;
-        case STATION_CONNECTING:
-            return StationStatus::CONNECTING;
-        case STATION_WRONG_PASSWORD:
-            return StationStatus::WRONG_PASSWORD;
-        case STATION_NO_AP_FOUND:
+        case WL_NO_SSID_AVAIL:
             return StationStatus::NO_AP_FOUND;
-        case STATION_CONNECT_FAIL:
+        case WL_CONNECT_FAILED:
+        case WL_CONNECTION_LOST:
+        case WL_DISCONNECTED:
             return StationStatus::CONNECT_FAIL;
-        case STATION_GOT_IP:
+        case WL_CONNECTED:
             return StationStatus::GOT_IP;
-        case 255: // No idea what this is, but it's returned sometimes;
+        case WL_NO_SHIELD:
             return StationStatus::IDLE;
     }
     iop_panic(IOP_STR("Unreachable status: ").toString() + std::to_string(static_cast<uint8_t>(s)));
@@ -82,25 +86,21 @@ void Wifi::setMode(WiFiMode mode) const noexcept {
 
 void Wifi::disconnectFromAccessPoint() const noexcept {
     IOP_TRACE()
-    ETS_UART_INTR_DISABLE(); // NOLINT hicpp-signed-bitwise
-    wifi_station_disconnect();
-    ETS_UART_INTR_ENABLE(); // NOLINT hicpp-signed-bitwise
+    portDISABLE_INTERRUPTS();
+    ::WiFi.disconnect();
+    portENABLE_INTERRUPTS();
 }
 
 std::pair<iop::NetworkName, iop::NetworkPassword> Wifi::credentials() const noexcept {
     IOP_TRACE()
 
-    station_config config;
-    memset(&config, '\0', sizeof(config));
-    wifi_station_get_config(&config);
-
     auto ssid = iop::NetworkName();
     ssid.fill('\0');
-    std::memcpy(ssid.data(), config.ssid, sizeof(config.ssid));
+    std::strncpy(ssid.data(), ::WiFi.SSID().c_str(), sizeof(ssid));
 
     auto psk = iop::NetworkPassword();
     psk.fill('\0');
-    std::memcpy(psk.data(), config.password, sizeof(config.password));
+    std::strncpy(psk.data(), ::WiFi.psk().c_str(), sizeof(psk));
 
     return std::make_pair(ssid, psk);
 }
@@ -109,8 +109,9 @@ void Wifi::setup(driver::CertStore *certStore) noexcept {
   iop_assert(this->client, IOP_STR("Wifi has been moved out, client is nullptr"));
 
   #ifdef IOP_SSL
-  iop_assert(certStore && certStore->internal, IOP_STR("CertStore is not set, but SSL is enabled"));
-  static_cast<NetworkClient*>(this->client)->setCertStore(reinterpret_cast<BearSSL::CertStoreBase*>(certStore->internal));
+  iop_assert(rootca_crt_bundle_start, IOP_STR("Cert Bundle is null, but SSL is enabled"));
+  //esp_crt_bundle_set(bundle);
+  //static_cast<NetworkClient*>(this->client)->setCACertBundle(rootca_crt_bundle_start);
   #endif
 
   ::WiFi.persistent(false);
@@ -132,11 +133,7 @@ void Wifi::enableOurAccessPoint(std::string_view ssid, std::string_view psk) con
     const auto mask = IPAddress(255, 255, 255, 0);
     ::WiFi.softAPConfig(staticIp, staticIp, mask);
 
-    String ssidStr;
-    ssidStr.concat(ssid.begin(), ssid.length());
-    String pskStr;
-    pskStr.concat(psk.begin(), psk.length());
-    ::WiFi.softAP(ssidStr, pskStr);
+    ::WiFi.softAP(std::string(ssid).c_str(), std::string(psk).c_str());
 }
 
 auto Wifi::disableOurAccessPoint() const noexcept -> void {
@@ -147,15 +144,7 @@ auto Wifi::disableOurAccessPoint() const noexcept -> void {
 }
 
 bool Wifi::connectToAccessPoint(std::string_view ssid, std::string_view psk) const noexcept {
-    if (wifi_station_get_connect_status() == STATION_CONNECTING) {
-        this->disconnectFromAccessPoint();
-    }
-
-    String ssidStr;
-    ssidStr.concat(ssid.begin(), ssid.length());
-    String pskStr;
-    pskStr.concat(psk.begin(), psk.length());
-    ::WiFi.begin(ssidStr, pskStr);
+    ::WiFi.begin(std::string(ssid).c_str(), std::string(psk).c_str());
 
     return ::WiFi.waitForConnectResult() != -1;
 }

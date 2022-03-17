@@ -1,12 +1,12 @@
 #include "driver/esp/device.hpp"
 
-#include "Esp.h"
+//extern "C" int rom_phy_get_vdd33();
 
 namespace driver {
 auto Device::platform() const noexcept -> iop::StaticString {
-  return IOP_STR("ESP8266");
+  return IOP_STR("ESP32");
 }
 auto Device::vcc() const noexcept -> uint16_t {
-  return ESP.getVcc();
+  return 0; // TODO
 }
 }

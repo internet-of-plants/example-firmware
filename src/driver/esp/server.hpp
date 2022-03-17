@@ -1,8 +1,16 @@
 #include "driver/server.hpp"
 #include "driver/panic.hpp"
+
+#ifdef IOP_ESP8266
 #include "ESP8266WebServer.h"
-#include "DNSServer.h"
 #include <user_interface.h>
+using WebServer = ESP8266WebServer;
+#elif defined(IOP_ESP32)
+#include "WebServer.h"
+#else
+#error "Non supported arduino based server device"
+#endif
+#include "DNSServer.h"
 #include <optional>
 
 namespace driver {
@@ -11,8 +19,8 @@ iop::Log & logger() noexcept {
   return logger_;
 }
 
-auto to_server(void *ptr) noexcept -> ESP8266WebServer & {
-  return *reinterpret_cast<ESP8266WebServer *>(ptr);
+auto to_server(void *ptr) noexcept -> WebServer & {
+  return *reinterpret_cast<WebServer *>(ptr);
 }
 
 HttpConnection::HttpConnection(void * parent) noexcept: server(parent) {}
@@ -37,13 +45,13 @@ void HttpConnection::reset() noexcept {}
 static uint32_t serverPort = 0;
 HttpServer::HttpServer(uint32_t port) noexcept { IOP_TRACE(); serverPort = port; }
 
-auto validateServer(void **ptr) noexcept -> ESP8266WebServer & {
+auto validateServer(void **ptr) noexcept -> WebServer & {
   if (!*ptr) {
     iop_assert(serverPort != 0, IOP_STR("Server port is not defined"));
-    ESP8266WebServer **s = reinterpret_cast<ESP8266WebServer **>(ptr);
-    *s = new (std::nothrow) ESP8266WebServer(serverPort);
+    WebServer **s = reinterpret_cast<WebServer **>(ptr);
+    *s = new (std::nothrow) WebServer(serverPort);
   }
-  iop_assert(*ptr, IOP_STR("Unable to allocate ESP8266WebServer"));
+  iop_assert(*ptr, IOP_STR("Unable to allocate WebServer"));
   return to_server(*ptr);
 }
 HttpConnection::HttpConnection(HttpConnection &&other) noexcept: server(other.server) {
@@ -55,7 +63,7 @@ auto HttpConnection::operator=(HttpConnection &&other) noexcept -> HttpConnectio
   return *this;
 }
 HttpConnection::~HttpConnection() noexcept {
-  delete reinterpret_cast<ESP8266WebServer *>(this->server);
+  delete reinterpret_cast<WebServer *>(this->server);
 }
 HttpServer::HttpServer(HttpServer &&other) noexcept: server(other.server) {
   other.server = nullptr;
@@ -66,7 +74,7 @@ auto HttpServer::operator=(HttpServer &&other) noexcept -> HttpServer & {
   return *this;
 }
 HttpServer::~HttpServer() noexcept {
-  delete reinterpret_cast<ESP8266WebServer *>(this->server);
+  delete reinterpret_cast<WebServer *>(this->server);
 }
 void HttpServer::begin() noexcept { IOP_TRACE(); validateServer(&this->server).begin(); }
 void HttpServer::close() noexcept { IOP_TRACE(); validateServer(&this->server).close(); }

@@ -1,13 +1,9 @@
-#include "driver/device.hpp"
-#include "driver/runtime.hpp"
-#include "driver/panic.hpp"
-
 #include "driver/cpp17/device.hpp"
 
-#include <stdint.h>
+#include "driver/runtime.hpp"
+#include "driver/panic.hpp"
+#include "driver/cpp17/runtime_metadata.hpp"
 
-// POSIX
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <unistd.h>
@@ -19,19 +15,6 @@ void Device::syncNTP() const noexcept {}
 auto Device::vcc() const noexcept -> uint16_t { return UINT16_MAX; }
 
 auto Device::platform() const noexcept -> iop::StaticString { return IOP_STR("POSIX"); }
-
-auto Device::availableMemory() const noexcept -> Memory {
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-
-  std::map<std::string_view, uintmax_t> heap;
-  heap.insert({ std::string_view("DRAM"), pages * page_size });
-
-  std::map<std::string_view, uintmax_t> biggestBlock;
-  biggestBlock.insert({ std::string_view("DRAM"), pages * page_size }); // Ballpark
-
-  return Memory(driver::stack_used(), heap, biggestBlock);
-}
 
 iop::MacAddress & Device::macAddress() const noexcept {
   static iop::MacAddress mac;

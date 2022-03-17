@@ -1,7 +1,6 @@
 #include "driver/storage.hpp"
-#include "driver/panic.hpp"
-#include "sys/pgmspace.h"
-#include "EEPROM.h"
+
+#include <EEPROM.h>
 
 namespace driver {
 auto Storage::setup(const uintmax_t size) noexcept -> bool {
@@ -15,7 +14,9 @@ auto Storage::commit() noexcept -> bool {
 }
 // Can never be nullptr as EEPROM.begin throws on OOM
 auto Storage::asRef() const noexcept -> uint8_t const * {
-    return EEPROM.getConstDataPtr();
+    // getConstDataPtr isn't standard so ESP32 doesn't support it
+    // UB if EEPROM has const storage, but since we use the mutable static variable we are ok
+    return const_cast<EEPROMClass *>(&EEPROM)->getDataPtr();
 }
 auto Storage::asMut() noexcept -> uint8_t * {
     return EEPROM.getDataPtr();

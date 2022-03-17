@@ -19,7 +19,8 @@ enum class StationStatus {
   WRONG_PASSWORD,
   NO_AP_FOUND,
   CONNECT_FAIL,
-  GOT_IP
+  NO_SHIELD,
+  GOT_IP,
 };
 
 class CertStore;

@@ -119,7 +119,7 @@ auto Network::httpRequest(const HttpMethod method_,
     
     {
       // Could this cause memory fragmentation?
-      auto memory = driver::device.availableMemory();
+      auto memory = driver::thisThread.availableMemory();
       
       session.addHeader(IOP_STR("FREE_STACK"), std::to_string(memory.availableStack));
 

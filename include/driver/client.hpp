@@ -40,7 +40,7 @@ public:
 class HTTPClient {
 #ifdef IOP_POSIX
   std::vector<std::string> headersToCollect_;
-#elif defined(IOP_ESP8266)
+#elif defined(IOP_ESP8266) || defined(IOP_ESP32)
   ::HTTPClient * http;
 #elif defined(IOP_NOOP)
 #else

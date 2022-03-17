@@ -1,5 +1,6 @@
 #include "storage.hpp"
 #include "loop.hpp"
+#include <optional>
 
 #ifndef IOP_STORAGE_DISABLED
 #include "driver/storage.hpp"
@@ -52,7 +53,8 @@ auto Storage::token() const noexcept -> std::optional<std::reference_wrapper<con
   }
 
   this->logger.trace(IOP_STR("Found Auth token: "), tok);
-  return std::ref(authToken);
+  const auto ref = std::reference_wrapper<const AuthToken>(authToken);
+  return std::make_optional(ref);
 }
 
 void Storage::removeToken() const noexcept {

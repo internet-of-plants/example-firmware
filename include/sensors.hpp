@@ -11,12 +11,10 @@ class OneWire;
 /// Abstracts away sensors access, providing a cohesive state.
 /// It's completely synchronous.
 class Sensors {
-#ifdef IOP_SENSORS
   driver::io::Pin soilResistivityPower;
   OneWire * soilTemperatureOneWireBus;
   DallasTemperature * soilTemperatureSensor;
   DHT * airTempAndHumiditySensor;
-#endif
 
 public:
   /// Initializes all sensors

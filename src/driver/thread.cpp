@@ -1,11 +1,11 @@
 #ifdef IOP_POSIX
-#include "driver/cpp17/thread.hpp"
+#include "driver/posix/thread.hpp"
 #elif defined(IOP_ESP8266)
 #include "driver/esp8266/thread.hpp"
-#elif defined(IOP_NOOP)
-#include "driver/noop/thread.hpp"
 #elif defined(IOP_ESP32)
 #include "driver/esp32/thread.hpp"
+#elif defined(IOP_NOOP)
+#include "driver/noop/thread.hpp"
 #else
 #error "Target not supported"
 #endif

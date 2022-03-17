@@ -30,7 +30,7 @@ def preBuildCertificates(env):
 
     try:
         from asn1crypto.x509 import Certificate
-    except Exception:
+    except ImportError:
         if env is None:
             raise Exception("Must install asn1crypto library before running")
         env.Execute("$PYTHONEXE -m pip install asn1crypto==1.4.0")
@@ -103,7 +103,8 @@ def preBuildCertificates(env):
     f = open(dir_path + "/../include/generated/certificates.hpp", "w", encoding="utf8")
 
     f.write("#ifndef IOP_CERTIFICATES_H\n")
-    f.write("#define IOP_CERTIFICATES_H\n\n")
+    f.write("#define IOP_CERTIFICATES_H\n")
+    f.write("#ifdef IOP_ESP8266\n\n")
     f.write("namespace generated {\n\n")
     f.write("#include \"driver/cert_store.hpp\"\n")
     f.write("// This file is computer generated at build time (`build/preBuildCertificates.py` called by PlatformIO)\n\n")
@@ -183,6 +184,7 @@ def preBuildCertificates(env):
     f.write("};\n\n")
     f.write("static const driver::CertList certList(certificates, indexes, certSizes, numberOfCertificates);\n")
     f.write("} // namespace generated\n")
+    f.write("\n#endif" + "\n")
     f.write("\n#endif" + "\n")
 
     f.close()

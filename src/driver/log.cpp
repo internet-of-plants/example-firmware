@@ -3,15 +3,15 @@
 #elif defined(IOP_POSIX)
 #include "driver/cpp17/log.hpp"
 #elif defined(IOP_ESP8266)
-#include "driver/esp8266/log.hpp"
+#include "driver/arduino/log.hpp"
+#elif defined(IOP_ESP32)
+#include "driver/arduino/log.hpp"
 #elif defined(IOP_NOOP)
 #ifdef ARDUINO
-#include "driver/esp8266/log.hpp"
+#include "driver/arduino/log.hpp"
 #else
 #include "driver/cpp17/log.hpp"
 #endif
-#elif defined(IOP_ESP32)
-#include "driver/esp32/log.hpp"
 #else
 #error "Target not supported"
 #endif
@@ -19,6 +19,7 @@
 #include "driver/network.hpp"
 #include "driver/device.hpp"
 #include "driver/wifi.hpp"
+#include "driver/thread.hpp"
 
 static bool initialized = false;
 static bool isTracing_ = false; 
@@ -215,7 +216,7 @@ Tracer::Tracer(CodePoint point, Log logger) noexcept : point(std::move(point)), 
   
   {
     // Could this cause memory fragmentation?
-    auto memory = driver::device.availableMemory();
+    auto memory = driver::thisThread.availableMemory();
     
     this->logger.trace(IOP_STR("Free stack"), std::to_string(memory.availableStack));
 
@@ -245,7 +246,7 @@ void logMemory(const Log &logger) noexcept {
 
   {
     // Could this cause memory fragmentation?
-    auto memory = driver::device.availableMemory();
+    auto memory = driver::thisThread.availableMemory();
     
     logger.info(IOP_STR("Free stack"), std::to_string(memory.availableStack));
 

@@ -1,19 +1,38 @@
 #include "driver/client.hpp"
 #include "driver/panic.hpp"
 #include "driver/network.hpp"
-#include "driver/esp8266/network_client.hpp"
-#include "sys/pgmspace.h"
-#include "ESP8266HTTPClient.h"
-#include "WiFiClientSecure.h"
+
 #include <charconv>
 #include <system_error>
+
+#ifdef IOP_ESP8266
+#include "ESP8266WiFi.h"
+#include "ESP8266HTTPClient.h"
+#ifdef IOP_SSL
+using NetworkClient = BearSSL::WiFiClientSecure;
+#else
+using NetworkClient = WiFiClient;
+#endif
+#elif defined(IOP_ESP32)
+#include "HTTPClient.h"
+using NetworkClient = WiFiClient;
+#else
+#error "Non supported arduino based client device"
+#endif
 
 namespace iop {
 auto Network::codeToString(const int code) const noexcept -> std::string {
   IOP_TRACE();
   switch (code) {
+#ifdef IOP_ESP8266
   case HTTPC_ERROR_CONNECTION_FAILED:
     return IOP_STR("CONNECTION_FAILED").toString();
+#elif defined(IOP_ESP32)
+  case HTTPC_ERROR_CONNECTION_REFUSED:
+    return IOP_STR("CONNECTION_FAILED").toString();
+#endif
+  case HTTPC_ERROR_TOO_LESS_RAM:
+    return IOP_STR("LOW_RAM").toString();
   case HTTPC_ERROR_NOT_CONNECTED:
     return IOP_STR("NOT_CONNECTED").toString();
   case HTTPC_ERROR_CONNECTION_LOST:
@@ -71,7 +90,15 @@ auto networkStatus(const int code) noexcept -> std::optional<iop::NetworkStatus>
     return iop::NetworkStatus::BROKEN_SERVER;
   case 403:
     return iop::NetworkStatus::FORBIDDEN;
+  case HTTPC_ERROR_TOO_LESS_RAM:
+    return iop::NetworkStatus::BROKEN_CLIENT;
+
+
+#ifdef IOP_ESP8266
   case HTTPC_ERROR_CONNECTION_FAILED:
+#elif defined(IOP_ESP32)
+  case HTTPC_ERROR_CONNECTION_REFUSED:
+#endif
   case HTTPC_ERROR_SEND_HEADER_FAILED:
   case HTTPC_ERROR_SEND_PAYLOAD_FAILED:
   case HTTPC_ERROR_NOT_CONNECTED:
@@ -129,7 +156,8 @@ void Session::setAuthorization(std::string auth) noexcept {
 }
 auto Session::sendRequest(const std::string method, const std::string_view data) noexcept -> Response {
   iop_assert(this->ctx.http.http, IOP_STR("Session has been moved out"));
-  const auto code = this->ctx.http.http->sendRequest(method.c_str(), reinterpret_cast<const uint8_t*>(data.begin()), data.length());
+  // ESP32 gets a uint8_t* but immediately converts it to immutable, so const cast here is needed
+  const auto code = this->ctx.http.http->sendRequest(method.c_str(), reinterpret_cast<uint8_t*>(const_cast<char*>(data.begin())), data.length());
   if (code < 0) {
     return Response(code);
   }
