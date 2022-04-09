@@ -248,7 +248,7 @@ auto Api::authenticate(std::string_view username,
   (void)std::move(username);
   (void)std::move(password);
   IOP_TRACE();
-  return (AuthToken){0};
+  return AuthToken({0});
 }
 auto Api::registerLog(const AuthToken &authToken,
                       std::string_view log) const noexcept

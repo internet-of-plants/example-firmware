@@ -164,6 +164,7 @@ auto EventLoop::handleInterrupt(const InterruptEvent event, const std::optional<
     // Satisfies linter when all interrupt features are disabled
     (void)*this;
     (void)event;
+    (void)token;
 
     IOP_TRACE();
 
