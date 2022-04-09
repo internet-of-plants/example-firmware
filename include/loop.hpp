@@ -2,10 +2,10 @@
 #define IOP_LOOP
 #include "api.hpp"
 
-#include "driver/device.hpp"
-#include "driver/thread.hpp"
-#include "driver/network.hpp"
-#include "driver/panic.hpp"
+#include "iop/device.hpp"
+#include "iop/thread.hpp"
+#include "iop/network.hpp"
+#include "iop/panic.hpp"
 #include "configuration.hpp"
 #include "storage.hpp"
 #include "sensors.hpp"

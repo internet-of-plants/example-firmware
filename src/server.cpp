@@ -1,13 +1,13 @@
 #include "server.hpp"
 
 #ifndef IOP_SERVER_DISABLED
-#include "driver/wifi.hpp"
-#include "driver/thread.hpp"
+#include "iop/wifi.hpp"
+#include "iop/thread.hpp"
 
 #include "configuration.hpp"
-#include "driver/network.hpp"
+#include "iop/network.hpp"
 #include "api.hpp"
-#include "driver/device.hpp"
+#include "iop/device.hpp"
 #include "configuration.hpp"
 #include "loop.hpp"
 

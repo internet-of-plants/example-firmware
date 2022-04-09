@@ -1,5 +1,5 @@
-#include "driver/panic.hpp"
-#include "driver/device.hpp"
+#include "iop/panic.hpp"
+#include "iop/device.hpp"
 #include "configuration.hpp"
 #include "loop.hpp"
 #include "api.hpp"

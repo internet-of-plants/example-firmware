@@ -1,9 +1,9 @@
 #ifndef IOP_CONFIGURATION_HPP
 #define IOP_CONFIGURATION_HPP
 
-#include "driver/io.hpp"
-#include "driver/thread.hpp"
-#include "driver/log.hpp"
+#include "iop/io.hpp"
+#include "iop/thread.hpp"
+#include "iop/log.hpp"
 #include "utils.hpp"
 #include <optional>
 

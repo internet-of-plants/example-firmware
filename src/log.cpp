@@ -1,10 +1,10 @@
-#include "driver/log.hpp"
+#include "iop/log.hpp"
 #include "configuration.hpp"
 #include "loop.hpp"
 
 #ifdef IOP_NETWORK_LOGGING
 
-#include "driver/thread.hpp"
+#include "iop/thread.hpp"
 
 static auto staticPrinter(const iop::StaticString str, iop::LogLevel level, iop::LogType kind) noexcept -> void;
 static auto viewPrinter(const std::string_view, iop::LogLevel level, iop::LogType kind) noexcept -> void;

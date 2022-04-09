@@ -1,6 +1,6 @@
 #include "loop.hpp" 
-#include "driver/panic.hpp"
-#include "driver/io.hpp"
+#include "iop/panic.hpp"
+#include "iop/io.hpp"
 
 EventLoop eventLoop(config::uri(), config::logLevel);
 

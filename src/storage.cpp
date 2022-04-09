@@ -3,8 +3,8 @@
 #include <optional>
 
 #ifndef IOP_STORAGE_DISABLED
-#include "driver/storage.hpp"
-#include "driver/panic.hpp"
+#include "iop/storage.hpp"
+#include "iop/panic.hpp"
 
 constexpr const uintmax_t EEPROM_SIZE = 512;
 

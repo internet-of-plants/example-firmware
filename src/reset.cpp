@@ -1,7 +1,7 @@
 #ifdef IOP_FACTORY_RESET
-#include "driver/device.hpp"
-#include "driver/io.hpp"
-#include "driver/thread.hpp"
+#include "iop/device.hpp"
+#include "iop/io.hpp"
+#include "iop/thread.hpp"
 #include "configuration.hpp"
 
 static volatile iop::time::milliseconds resetStateTime = 0;
@@ -31,7 +31,7 @@ void setup() noexcept {
 }
 } // namespace reset
 #else
-#include "driver/log.hpp"
+#include "iop/log.hpp"
 namespace reset {
 void setup() noexcept { IOP_TRACE(); }
 } // namespace reset
