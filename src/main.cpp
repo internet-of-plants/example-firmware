@@ -8,13 +8,13 @@ bool scheduledFactoryReset = false;
 Sensors sensors(config::soilResistivityPower, config::soilTemperature, config::airTempAndHumidity, config::dhtVersion);
 
 namespace iop {
-auto authenticatedSetup(iop::EventLoop &loop) noexcept -> void {
+auto iopSetup(iop::EventLoop &loop) noexcept -> void {
   (void) loop;
   reset::setup();
   sensors.setup();
 }
 
-auto authenticatedLoop(iop::EventLoop &loop, const iop::AuthToken &token) noexcept -> void {
+auto iopLoop(iop::EventLoop &loop, const iop::AuthToken &token) noexcept -> void {
     IOP_TRACE();
 
     if (scheduledFactoryReset) {
