@@ -12,5 +12,4 @@ constexpr static iop_hal::io::Pin factoryResetButton = iop_hal::io::Pin::D1;
 /// Version of DHT (Digital Humidity and Temperature) sensor. (ex: DHT11 or DHT21 or DHT22...)
 constexpr static uint8_t dhtVersion = 22; // DHT22
 }
-
 #endif
