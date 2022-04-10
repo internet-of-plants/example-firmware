@@ -1,13 +1,13 @@
 #include <unity.h>
 
-#include "iop/runtime.hpp"
+#include "iop-hal/runtime.hpp"
 
 int main(int argc, char** argv) {
     (void) argc;
     (void) argv;
 
     UNITY_BEGIN();
-    driver::setup();
+    iop_hal::setup();
     UNITY_END();
     return 0;
 }

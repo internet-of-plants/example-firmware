@@ -1,6 +1,6 @@
 #include "server.hpp"
 
-#include "iop/network.hpp"
+#include "iop-hal/network.hpp"
 #include "api.hpp"
 
 #include <pthread.h>
@@ -14,7 +14,7 @@ const static iop::StaticString serverHost(reinterpret_cast<const __FlashStringHe
 
 /*
 void producer() {
-    driver::HTTPClient client;
+    iop_hal::HTTPClient client;
     client.begin(iop::Network::wifiClient(), serverHost.toString());
     const auto code = client.sendRequest("GET", "");
     iop::Log::print((std::string("Status: ") + std::to_string(code) + "\n").c_str(), iop::LogLevel::INFO, iop::LogType::STARTEND);
