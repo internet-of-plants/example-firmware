@@ -1,17 +1,12 @@
-#include "iop-hal/log.hpp"
 #include "sensors.hpp"
 
-#include "iop-hal/panic.hpp"
-
 void Sensors::setup() noexcept {
-  IOP_TRACE();
   this->soilResistivity.begin();
   this->airTempAndHumidity.begin();
   this->soilTemperature.begin();
 }
 
 auto Sensors::measure() noexcept -> Event {
-  IOP_TRACE();
   return Event(
     this->airTempAndHumidity.measureTemperature(),
     this->airTempAndHumidity.measureHumidity(),

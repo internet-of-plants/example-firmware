@@ -1,8 +1,5 @@
-#include "iop-hal/device.hpp"
-#include "iop-hal/io.hpp"
 #include "iop-hal/thread.hpp"
 #include "iop-hal/log.hpp"
-#include "iop/utils.hpp"
 #include "sensors.hpp"
 #include "configuration.hpp"
 
