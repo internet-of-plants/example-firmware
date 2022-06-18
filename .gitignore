@@ -5,4 +5,3 @@ __pycache__
 .*.swp
 workspace.code-workspace
 eeprom.dat
-x509_crt_bundle.bin
