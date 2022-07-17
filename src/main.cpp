@@ -7,6 +7,10 @@
 
 namespace config {
 constexpr static iop::time::milliseconds measurementsInterval = 180 * 1000;
+constexpr static char SSID_RAW[] IOP_ROM = "SSID";
+static const iop::StaticString SSID = reinterpret_cast<const __FlashStringHelper*>(SSID_RAW);
+constexpr static char PSK_RAW[] IOP_ROM = "CKyiYiPBpigVi6AxjVg2";
+static const iop::StaticString PSK = reinterpret_cast<const __FlashStringHelper*>(PSK_RAW);
 constexpr static Pin airTempAndHumidity = Pin::D6;
 constexpr static dht::Version dhtVersion = dht::Version::DHT22;
 constexpr static Pin factoryResetButton = Pin::D1;
@@ -34,6 +38,7 @@ auto reportMeasurements(iop::EventLoop &loop, const iop::AuthToken &token) noexc
 
 namespace iop {
 auto setup(EventLoop &loop) noexcept -> void {
+  loop.setAccessPointCredentials(config::SSID, config::PSK);
   airTempAndHumidity.begin();
   loop.setInterval(1000, reset::resetIfNeeded);
   reset::setup(IOP_PIN_RAW(config::factoryResetButton));
