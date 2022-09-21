@@ -36,8 +36,7 @@ auto prepareJson(iop::EventLoop & loop) noexcept -> std::unique_ptr<iop::Api::Js
 
 auto reportMeasurements(iop::EventLoop &loop, const iop::AuthToken &token) noexcept -> void {
   IOP_TRACE();
-  iop_panic(IOP_STR("bro"));
-  //loop.registerEvent(token, *prepareJson(loop));
+  loop.registerEvent(token, *prepareJson(loop));
 }
 
 namespace iop {
