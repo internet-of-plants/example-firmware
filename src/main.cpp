@@ -4,6 +4,7 @@
 #include <factory_reset_button.hpp>
 #include <soil_resistivity.hpp>
 #include <light.hpp>
+#include <water_pump.hpp>
 
 #include "pin.hpp"
 #include "generated/psk.hpp"
@@ -18,9 +19,14 @@ static const iop::StaticString SSID = reinterpret_cast<const __FlashStringHelper
 static const iop::StaticString PSK = reinterpret_cast<const __FlashStringHelper*>(generated::PSK);
 
 static const Pin light = Pin::D4;
-static const std::pair<relay::Moment, relay::State> lightMoments[] = {
+static const std::pair<relay::Moment, relay::State> lightActions[] = {
   std::make_pair(relay::Moment(6, 0, 0), relay::State::ON),
   std::make_pair(relay::Moment(0, 0, 0), relay::State::OFF),
+};
+static const Pin waterPump = Pin::D2;
+static const std::pair<relay::Moment, iop::time::seconds> waterPumpActions[] = {
+  std::make_pair(relay::Moment(6, 0, 0), 5),
+  std::make_pair(relay::Moment(12, 0, 0), 5),
 };
 static const Pin airTempAndHumidity = Pin::D6;
 static const dht::Version dhtVersion = dht::Version::DHT22;
@@ -29,6 +35,7 @@ static const Pin soilResistivityPower = Pin::D7;
 static const Pin soilTemperature = Pin::D5;
 }
 
+static relay::WaterPump waterPump(IOP_PIN_RAW(config::waterPump));
 static relay::Light light(IOP_PIN_RAW(config::light));
 static dallas::TemperatureCollection soilTemperature(IOP_PIN_RAW(config::soilTemperature));
 static dht::Dht airTempAndHumidity(IOP_PIN_RAW(config::airTempAndHumidity), config::dhtVersion);
@@ -64,8 +71,13 @@ auto unauthenticatedAct(iop::EventLoop &loop) noexcept -> void {
 namespace iop {
 auto setup(EventLoop &loop) noexcept -> void {
   loop.setAccessPointCredentials(config::SSID, config::PSK);
-  for (const auto [moment, state]: config::lightMoments) {
+  light.begin();
+  for (const auto [moment, state]: config::lightActions) {
     light.setTime(moment, state);
+  }
+  waterPump.begin();
+  for (const auto [moment, seconds]: config::waterPumpActions) {
+    waterPump.setTime(moment, seconds);
   }
   airTempAndHumidity.begin();
   reset::setup(IOP_PIN_RAW(config::factoryResetButton));
