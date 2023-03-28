@@ -5,6 +5,7 @@
 #include <soil_resistivity.hpp>
 #include <light.hpp>
 #include <water_pump.hpp>
+#include <cooler.hpp>
 
 #include "pin.hpp"
 #include "generated/psk.hpp"
@@ -18,6 +19,8 @@ static char SSID_RAW[] IOP_ROM = "iop";
 static const iop::StaticString SSID = reinterpret_cast<const __FlashStringHelper*>(SSID_RAW);
 static const iop::StaticString PSK = reinterpret_cast<const __FlashStringHelper*>(generated::PSK);
 
+static const Pin cooler = Pin::D8;
+static const float coolerMax = 30.;
 static const Pin light = Pin::D4;
 static const std::pair<relay::Moment, relay::State> lightActions[] = {
   std::make_pair(relay::Moment(6, 0, 0), relay::State::ON),
@@ -40,6 +43,7 @@ static relay::Light light(IOP_PIN_RAW(config::light));
 static dallas::TemperatureCollection soilTemperature(IOP_PIN_RAW(config::soilTemperature));
 static dht::Dht airTempAndHumidity(IOP_PIN_RAW(config::airTempAndHumidity), config::dhtVersion);
 static sensor::SoilResistivity soilResistivity(IOP_PIN_RAW(config::soilResistivityPower));
+static relay::Cooler cooler(IOP_PIN_RAW(config::cooler), std::ref(airTempAndHumidity), config::coolerMax);
 
 auto prepareJson(iop::EventLoop & loop) noexcept -> std::unique_ptr<iop::Api::Json> {
   IOP_TRACE();
@@ -61,16 +65,19 @@ auto reportMeasurements(iop::EventLoop &loop, const iop::AuthToken &token) noexc
 
 auto cleanup() noexcept -> void {
   light.reset();
+  cooler.reset();
 }
 
 auto unauthenticatedAct(iop::EventLoop &loop) noexcept -> void {
   reset::resetIfNeeded(loop);
   light.actIfNeeded();
+  cooler.actIfNeeded();
 }
 
 namespace iop {
 auto setup(EventLoop &loop) noexcept -> void {
   loop.setAccessPointCredentials(config::SSID, config::PSK);
+  cooler.begin();
   light.begin();
   for (const auto [moment, state]: config::lightActions) {
     light.setTime(moment, state);
