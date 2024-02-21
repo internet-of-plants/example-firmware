@@ -34,7 +34,6 @@ static const std::pair<relay::Moment, iop::time::seconds> waterPumpActions[] = {
 static const Pin airTempAndHumidity = Pin::D6;
 static const dht::Version dhtVersion = dht::Version::DHT22;
 static const Pin factoryResetButton = Pin::D1;
-static const Pin soilResistivityPower = Pin::D7;
 static const Pin soilTemperature = Pin::D5;
 }
 
@@ -42,7 +41,7 @@ static relay::WaterPump waterPump(IOP_PIN_RAW(config::waterPump));
 static relay::Light light(IOP_PIN_RAW(config::light));
 static dallas::TemperatureCollection soilTemperature(IOP_PIN_RAW(config::soilTemperature));
 static dht::Dht airTempAndHumidity(IOP_PIN_RAW(config::airTempAndHumidity), config::dhtVersion);
-static sensor::SoilResistivity soilResistivity(IOP_PIN_RAW(config::soilResistivityPower));
+static sensor::SoilResistivity soilResistivity;
 static relay::Cooler cooler(IOP_PIN_RAW(config::cooler), std::ref(airTempAndHumidity), config::coolerMax);
 
 auto prepareJson(iop::EventLoop & loop) noexcept -> std::unique_ptr<iop::Api::Json> {
